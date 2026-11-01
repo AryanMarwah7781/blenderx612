@@ -10,6 +10,16 @@ A procedurally generated Blender model of the **John Deere 612R self-propelled s
 |---|---|
 | ![CommandARM](docs/viewer_commandarm.png) | ![Display](docs/viewer_display.png) |
 
+### Blender viewport views
+
+`python3 blender/render_viewport.py` re-creates these (Workbench engine: Solid, Wireframe, X-Ray).
+
+![Quad view](docs/viewport_quad.png)
+
+| Solid | Wireframe | X-Ray (service pose) |
+|---|---|---|
+| ![](docs/viewport_solid_hero.png) | ![](docs/viewport_wire_transport.png) | ![](docs/viewport_xray_service.png) |
+
 ## What is in the repo
 
 | Path | What it is |
