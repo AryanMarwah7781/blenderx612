@@ -1,0 +1,19 @@
+{
+  "name": "show_on_sprayer",
+  "description": "Show the user, on the interactive 3D John Deere 612R sprayer, the control, service point, moving part, or step-by-step procedure that the current answer refers to. Call it whenever an answer from the operator's or technical manual involves something physical on the machine (a button on the CommandARM or hydro handle, a switch, a fold or tread function, a filter or strainer, an access panel). Use the IDs from build/rag_index.jsonl.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "cmd": {"type": "string", "enum": ["procedure", "press", "highlight", "set", "camera"],
+              "description": "procedure: play a guided procedure. press: operate a control (momentary switches are held for `ms`). highlight: make meshes glow. set: move joints to target values. camera: move the camera to a named view."},
+      "id": {"type": "string", "description": "Procedure ID for cmd=procedure, for example op_fold_boom."},
+      "step": {"type": "integer", "description": "Zero-based step to start at for cmd=procedure."},
+      "control": {"type": "string", "description": "Control ID for cmd=press, for example ca_fold_L_in."},
+      "ms": {"type": "integer", "description": "How long to hold a momentary control, in milliseconds."},
+      "meshes": {"type": "array", "items": {"type": "string"}, "description": "Mesh names for cmd=highlight, for example SVC_boom_strainer."},
+      "joints": {"type": "object", "additionalProperties": {"type": "number"}, "description": "Joint targets for cmd=set, for example {\"boom_height\": 2.4}."},
+      "camera": {"type": "string", "enum": ["overview", "field", "cab", "commandarm", "display", "left_side", "engine", "boom_center", "wheel_FL"]}
+    },
+    "required": ["cmd"]
+  }
+}
