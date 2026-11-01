@@ -2,9 +2,19 @@
 
 A procedurally generated Blender model of the **John Deere 612R self-propelled sprayer** with an articulated pivot hierarchy, plus a browser viewer that a RAG assistant can drive. When an answer from the operator's manual says "press boom fold IN" or "check the 80-mesh boom strainer", the assistant can show that control or part on the machine and run it.
 
-![Field position](docs/render_field.png)
 ![Transport position](docs/render_transport.png)
-![Service position](docs/render_service.png)
+
+| Side (transport) | Rear | Field | Service pose |
+|---|---|---|---|
+| ![](docs/render_side.png) | ![](docs/render_rear.png) | ![](docs/render_field.png) | ![](docs/render_service.png) |
+
+The layout follows dealer photos of production 612R machines:
+- Front engine under a tractor-style nose that tilts up.
+- Cab over the front axle, with the exhaust stack at the left front corner.
+- Stainless tank between the axles, with a black poly rinse tank on top.
+- Green steel boom that folds forward, with the tips reaching past the nose.
+- Green hydraulic ladder ahead of the left front wheel.
+- Black fenders, rear mud flaps with tail lights, and an SMV emblem on the boom centre frame.
 
 | Interactive viewer: CommandARM (highlighted switch) | Live CommandCenter display |
 |---|---|

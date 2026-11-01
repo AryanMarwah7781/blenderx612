@@ -69,7 +69,7 @@
 {"id": "joint_tip_R", "type": "joint", "text": "612R moving part: Right breakaway. Range -35 to 35 deg.", "viewer": {"cmd": "set", "joints": {"tip_R": 35}}, "verified": false}
 {"id": "joint_ladder", "type": "joint", "text": "612R moving part: Hydraulic ladder. Range 0 to 80 deg. Hydraulic raise/lower is OFFICIAL; travel angle is an ESTIMATE.", "viewer": {"cmd": "set", "joints": {"ladder": 80}}, "verified": true}
 {"id": "joint_cab_door", "type": "joint", "text": "612R moving part: Cab door. Range 0 to 80 deg.", "viewer": {"cmd": "set", "joints": {"cab_door": 80}}, "verified": false}
-{"id": "joint_hood", "type": "joint", "text": "612R moving part: Engine hood. Range 0 to 65 deg.", "viewer": {"cmd": "set", "joints": {"hood": 65}}, "verified": false}
+{"id": "joint_hood", "type": "joint", "text": "612R moving part: Engine hood (front nose, tilts up). Range 0 to 65 deg.", "viewer": {"cmd": "set", "joints": {"hood": 65}}, "verified": false}
 {"id": "joint_eductor", "type": "joint", "text": "612R moving part: Chemical eductor. Range 0 to 85 deg.", "viewer": {"cmd": "set", "joints": {"eductor": 85}}, "verified": false}
 {"id": "joint_hydro_handle", "type": "joint", "text": "612R moving part: Hydro handle (MFWD lever). Range -12 to 25 deg. Forward = forward travel. Lever angle maps to the commanded fraction of the selected range.", "viewer": {"cmd": "set", "joints": {"hydro_handle": 25}}, "verified": false}
 {"id": "joint_steering_wheel", "type": "joint", "text": "612R moving part: Steering wheel. Range -540 to 540 deg. About 3 turns lock to lock (ESTIMATE). It drives the steer joint.", "viewer": {"cmd": "set", "joints": {"steering_wheel": 540}}, "verified": false}

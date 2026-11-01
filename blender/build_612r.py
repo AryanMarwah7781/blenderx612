@@ -3,16 +3,23 @@ Procedural Blender model of a John Deere 612R self-propelled sprayer.
 
 Run (headless):   blender -b -P blender/build_612r.py -- --out build
             or:   python3 blender/build_612r.py --out build          (pip install bpy)
-Optional:         --render   (writes preview PNGs to docs/)
+Optional:         --render   (photoreal Cycles previews -> docs/render_*.png)
 
 Everything is generated from spec/612r_spec.json.
   * Every moving part hangs under an empty named PIV_<joint>, at the real pivot point.
   * The root object "SPRAYER_612R" carries one custom property per joint, and drivers
     connect each property to the pivots. In Blender: select SPRAYER_612R, open
-    Object Properties > Custom Properties, and drag the values. The machine moves
-    with the right kinematics (Ackermann steering, parallel-link boom lift, fold chain, and so on).
+    Object Properties > Custom Properties, and drag the values.
   * Clickable controls and service points are separate meshes named CTL_/BTN_/SW_/SVC_/DSP_*,
     so a web viewer (viewer/) or a RAG pipeline can refer to them by ID.
+
+Layout follows photos of production 612R machines:
+  * Engine at the FRONT under a tractor-style nose (black grille, tilting hood).
+  * Cab over the front axle; exhaust stack at the left front cab corner.
+  * Stainless 1,200 gal tank between the axles; black poly rinse tank on top.
+  * Rear-mounted green steel boom on a parallel-link lift; folds forward alongside
+    the machine with the tips reaching past the nose.
+  * Hydraulic green ladder ahead of the left front wheel; black fenders / mud flaps.
 
 Axes: +X forward, +Y left, +Z up. Origin = rear axle centre on the ground. Units: metres.
 """
@@ -49,15 +56,19 @@ FRAME_BOT = CLEAR + 0.03
 FRAME_TOP = 1.86
 LEG_INSET = 0.36                           # leg centre is this far inboard of the wheel centre
 
+# Cab interior/shell is authored in a local "cab frame" (x 4.20..6.30) and the whole
+# cab_mount is shifted by CAB_DX so the cab sits over the front axle like the real machine.
 CAB_X0, CAB_X1 = 4.20, 6.30
+CAB_DX = -1.25                             # real cab: x 2.95 .. 5.05
 CAB_HW = 0.95
 CAB_FLOOR = 2.28
 CAB_ROOF = 3.92
+NOSE_X0, NOSE_X1 = CAB_X1 + CAB_DX, 6.75   # engine hood / nose
 
 LINK = JOINTS["boom_height"]["linkage"]
 ARM_L = LINK["arm_length"]
-UPPER_PIV = Vector((-0.90, 0, LINK["pivot_z"]))
-LOWER_PIV = Vector((-0.90, 0, LINK["pivot_z"] - 0.60))
+UPPER_PIV = Vector((-0.60, 0, LINK["pivot_z"]))
+LOWER_PIV = Vector((-0.60, 0, LINK["pivot_z"] - 0.60))
 NOZ_DROP = LINK["nozzle_drop"]
 BOOM_X = UPPER_PIV.x - ARM_L               # centre-frame plane at rest (theta = 0)
 NOZ_Z0 = UPPER_PIV.z - NOZ_DROP            # nozzle height at theta = 0
@@ -78,22 +89,34 @@ ENV = bpy.data.collections.new("Environment")
 scene.collection.children.link(ENV)
 
 # ----------------------------------------------------------------------------- materials
-def mat(name, rgb, metal=0.0, rough=0.5, alpha=1.0, emit=None):
+def _set(bsdf, name, value):
+    if name in bsdf.inputs:
+        bsdf.inputs[name].default_value = value
+
+def mat(name, rgb, metal=0.0, rough=0.5, alpha=1.0, emit=None, coat=0.0, emit_strength=3.0):
     m = bpy.data.materials.new(name)
+    try:
+        m.use_nodes = True
+    except Exception:
+        pass
     bsdf = m.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (*rgb, 1)
-    bsdf.inputs["Metallic"].default_value = metal
-    bsdf.inputs["Roughness"].default_value = rough
+    _set(bsdf, "Base Color", (*rgb, 1))
+    _set(bsdf, "Metallic", metal)
+    _set(bsdf, "Roughness", rough)
+    if coat:
+        _set(bsdf, "Coat Weight", coat)
+        _set(bsdf, "Coat Roughness", 0.08)
     if alpha < 1:
-        bsdf.inputs["Alpha"].default_value = alpha
+        _set(bsdf, "Alpha", alpha)
         try:
             m.surface_render_method = "BLENDED"
         except AttributeError:
             m.blend_method = "BLEND"
     if emit:
-        bsdf.inputs["Emission Color"].default_value = (*emit, 1)
-        bsdf.inputs["Emission Strength"].default_value = 2.0
+        _set(bsdf, "Emission Color", (*emit, 1))
+        _set(bsdf, "Emission Strength", emit_strength)
     m.diffuse_color = (*rgb, alpha)
+    m.metallic, m.roughness = metal, rough
     return m
 
 def srgb(h):
@@ -101,18 +124,21 @@ def srgb(h):
     return tuple(((x + 0.055) / 1.055) ** 2.4 if x > 0.04045 else x / 12.92 for x in c)
 
 M = {
-    "green":   mat("JD_Green", srgb("367C2B"), 0.1, 0.35),
-    "yellow":  mat("JD_Yellow", srgb("FFDE00"), 0.1, 0.4),
-    "black":   mat("Black_Plastic", srgb("1A1A1A"), 0.0, 0.6),
-    "tire":    mat("Tire_Rubber", srgb("141414"), 0.0, 0.9),
-    "steel":   mat("Stainless", srgb("C8CCD0"), 1.0, 0.25),
-    "dsteel":  mat("Dark_Steel", srgb("4A4E52"), 0.8, 0.45),
-    "boom":    mat("Boom_Steel", srgb("D9DCDF"), 0.6, 0.35),
-    "glass":   mat("Cab_Glass", srgb("9DB8C8"), 0.0, 0.05, alpha=0.28),
-    "seat":    mat("Seat_Fabric", srgb("2B2B2B"), 0.0, 0.9),
-    "engine":  mat("Engine_Gray", srgb("5C5F62"), 0.6, 0.5),
-    "red":     mat("Hydraulic_Red", srgb("B3261E"), 0.2, 0.4),
-    "orange":  mat("Nozzle_Orange", srgb("E87722"), 0.0, 0.5),
+    "green":   mat("JD_Green_Paint", srgb("367C2B"), 0.0, 0.32, coat=0.7),
+    "green_d": mat("JD_Green_Cast", srgb("2F6B26"), 0.0, 0.55, coat=0.3),
+    "yellow":  mat("JD_Yellow_Paint", srgb("FFDE00"), 0.0, 0.35, coat=0.6),
+    "black":   mat("Black_Plastic", srgb("151515"), 0.0, 0.55),
+    "black_g": mat("Black_Gloss", srgb("0E0E0E"), 0.0, 0.18, coat=0.5),
+    "tire":    mat("Tire_Rubber", srgb("1B1B1B"), 0.0, 0.88),
+    "steel":   mat("Stainless", srgb("D2D5D8"), 1.0, 0.22),
+    "dsteel":  mat("Dark_Steel", srgb("3E4246"), 0.7, 0.45),
+    "glass":   mat("Cab_Glass", srgb("1E2A30"), 0.0, 0.03, alpha=0.30),
+    "seat":    mat("Seat_Leather", srgb("3A3A3A"), 0.0, 0.7),
+    "engine":  mat("Engine_Green", srgb("2E6A25"), 0.1, 0.5),
+    "red":     mat("Hydraulic_Red", srgb("A0201A"), 0.1, 0.4),
+    "tail":    mat("Tail_Light", srgb("C0101A"), 0.0, 0.15, emit=srgb("FF1010"), emit_strength=1.0),
+    "smv":     mat("SMV_Orange", srgb("FF4A12"), 0.0, 0.3, emit=srgb("FF4A12"), emit_strength=0.4),
+    "orange":  mat("Nozzle_Tip", srgb("E87722"), 0.0, 0.5),
     "blue":    mat("DEF_Blue", srgb("1F5FAF"), 0.0, 0.4),
     "white":   mat("Poly_White", srgb("E8E8E2"), 0.0, 0.5),
     "screen":  mat("Display", srgb("0B1F12"), 0.0, 0.2, emit=srgb("1D4D2A")),
@@ -120,9 +146,9 @@ M = {
     "btn_y":   mat("Btn_Yellow", srgb("F2C200"), 0.0, 0.4),
     "btn_r":   mat("Btn_Red", srgb("C8202A"), 0.0, 0.4),
     "btn_k":   mat("Btn_Gray", srgb("6B6E70"), 0.0, 0.5),
-    "lens":    mat("Light_Lens", srgb("F5F2E0"), 0.0, 0.1, emit=srgb("FFF8D8")),
-    "amber":   mat("Beacon_Amber", srgb("FF9A00"), 0.0, 0.2, emit=srgb("FF8800")),
-    "ground":  mat("Soil", srgb("5B4632"), 0.0, 0.95),
+    "lens":    mat("LED_Lens", srgb("F5F5F0"), 0.0, 0.05, emit=srgb("FFFFFF"), emit_strength=1.5),
+    "amber":   mat("Beacon_Amber", srgb("FF9A00"), 0.0, 0.2, emit=srgb("FF8800"), emit_strength=1.5),
+    "hose":    mat("Hose_Black", srgb("101010"), 0.0, 0.7),
 }
 
 # ----------------------------------------------------------------------------- object helpers
@@ -157,12 +183,12 @@ class Builder:
             self.mats.append(m)
         return self.mats.index(m)
 
-    def _tag(self, geom_verts, m):
+    def _tag(self, geom_verts, m, smooth=False):
         mi = self._mi(m)
         faces = {f for v in geom_verts for f in v.link_faces}
         for f in faces:
             f.material_index = mi
-            f.smooth = False
+            f.smooth = smooth
 
     def _xf(self, p):
         return Vector(p) if self.local else Vector(p) - self.origin
@@ -176,7 +202,7 @@ class Builder:
         self._tag(r["verts"], m)
         return self
 
-    def cyl(self, center, radius, depth, m, axis="Z", segs=24, r2=None, rot=None):
+    def cyl(self, center, radius, depth, m, axis="Z", segs=24, r2=None, rot=None, smooth=True):
         if rot is None:
             rot = {"X": Matrix.Rotation(math.pi / 2, 3, "Y"),
                    "Y": Matrix.Rotation(math.pi / 2, 3, "X"),
@@ -184,7 +210,11 @@ class Builder:
         mtx = Matrix.Translation(self._xf(center)) @ rot.to_4x4()
         r = bmesh.ops.create_cone(self.bm, cap_ends=True, segments=segs, radius1=radius,
                                   radius2=radius if r2 is None else r2, depth=depth, matrix=mtx)
-        self._tag(r["verts"], m)
+        self._tag(r["verts"], m, smooth and segs > 6)
+        if smooth and segs > 6:   # keep the caps flat
+            for f in {f for v in r["verts"] for f in v.link_faces}:
+                if len(f.verts) > 4:
+                    f.smooth = False
         return self
 
     def tube(self, p1, p2, radius, m, segs=8):
@@ -195,14 +225,58 @@ class Builder:
         rot = Vector((0, 0, 1)).rotation_difference(d.normalized()).to_matrix()
         return self.cyl((p1 + p2) / 2, radius, d.length, m, rot=rot, segs=segs)
 
-    def sphere(self, center, radius, m, segs=16):
-        mtx = Matrix.Translation(self._xf(center))
+    def bar(self, p1, p2, w, m):
+        """Square steel section between two points (4-sided tube)."""
+        p1, p2 = Vector(p1), Vector(p2)
+        d = p2 - p1
+        if d.length < 1e-6:
+            return self
+        rot = Vector((0, 0, 1)).rotation_difference(d.normalized()).to_matrix() @ Matrix.Rotation(math.pi / 4, 3, "Z")
+        return self.cyl((p1 + p2) / 2, w * 0.7071, d.length, m, rot=rot, segs=4, smooth=False)
+
+    def sphere(self, center, radius, m, segs=16, scale=(1, 1, 1)):
+        mtx = Matrix.Translation(self._xf(center)) @ Matrix.Diagonal((*scale, 1))
         r = bmesh.ops.create_uvsphere(self.bm, u_segments=segs, v_segments=segs // 2, radius=radius, matrix=mtx)
-        self._tag(r["verts"], m)
+        self._tag(r["verts"], m, True)
+        return self
+
+    def loft(self, rings, m, smooth=True, cap=True):
+        """rings: list of lists of world-space points (same count, closed loops)."""
+        vs = [[self.bm.verts.new(self._xf(p)) for p in ring] for ring in rings]
+        new = [v for ring in vs for v in ring]
+        n = len(rings[0])
+        for a, b in zip(vs, vs[1:]):
+            for i in range(n):
+                self.bm.faces.new((a[i], a[(i + 1) % n], b[(i + 1) % n], b[i]))
+        caps = []
+        if cap:
+            caps.append(self.bm.faces.new(list(reversed(vs[0]))))
+            caps.append(self.bm.faces.new(vs[-1]))
+        self._tag(new, m, smooth)
+        for f in caps:
+            f.smooth = False
+        return self
+
+    def lathe(self, center, profile, m, axis="Y", steps=64, smooth=True):
+        """profile: list of (radius, offset-along-axis). Revolved 360 degrees about the axis."""
+        c = Vector(self._xf(center))
+        ax = {"X": Vector((1, 0, 0)), "Y": Vector((0, 1, 0)), "Z": Vector((0, 0, 1))}[axis]
+        perp = Vector((0, 0, 1)) if axis != "Z" else Vector((1, 0, 0))
+        rings = []
+        for k in range(steps):
+            q = Matrix.Rotation(2 * math.pi * k / steps, 3, ax)
+            rings.append([self.bm.verts.new(c + q @ (perp * r + ax * o)) for r, o in profile])
+        n = len(profile)
+        for k in range(steps):
+            a, b = rings[k], rings[(k + 1) % steps]
+            for i in range(n - 1):
+                self.bm.faces.new((a[i], a[i + 1], b[i + 1], b[i]))
+        self._tag([v for r in rings for v in r], m, smooth)
         return self
 
     def done(self, bevel=0.0, smooth=False, props=None):
         me = bpy.data.meshes.new(self.name)
+        bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
         self.bm.to_mesh(me)
         self.bm.free()
         for m in self.mats:
@@ -218,6 +292,7 @@ class Builder:
         if bevel > 0:
             mod = o.modifiers.new("Bevel", "BEVEL")
             mod.width, mod.segments, mod.limit_method = bevel, 2, "ANGLE"
+            mod.harden_normals = False
         for k, v in (props or {}).items():
             o[k] = v
         return o
@@ -235,6 +310,19 @@ def tag(o, kind, ref_id, label):
     o["ref_id"] = ref_id
     o["label"] = label
 
+
+def rrect(x, w, z0, z1, r, n=5, y0=0.0):
+    """Closed ring (in a plane x = const) of a box section with rounded top corners."""
+    pts = [(x, y0 + w, z0)]
+    for k in range(n + 1):                           # left top corner
+        a = math.pi * 0.5 * k / n
+        pts.append((x, y0 + w - r + r * math.cos(a), z1 - r + r * math.sin(a)))
+    for k in range(n + 1):                           # right top corner
+        a = math.pi * 0.5 + math.pi * 0.5 * k / n
+        pts.append((x, y0 - w + r + r * math.cos(a), z1 - r + r * math.sin(a)))
+    pts.append((x, y0 - w, z0))
+    return [Vector(p) for p in pts]
+
 # ============================================================================= ROOT + CHASSIS
 root = empty("SPRAYER_612R", (0, 0, 0), size=1.0)
 root["model"] = SPEC["model"]
@@ -242,28 +330,42 @@ root["spec_version"] = SPEC["spec_version"]
 
 chassis = empty("PIV_chassis", (0, 0, 0), root)   # body heave/pitch/roll are applied here by the viewer
 
+CRADLE_X = 3.05
 def frame(b):
-    # twin main rails from the boom mount to the cab
-    for y in (0.42, -0.42):
-        b.box((2.6, y, (FRAME_BOT + FRAME_TOP) / 2), (7.6, 0.16, FRAME_TOP - FRAME_BOT), M["green"])
-    for x in (-0.95, 0.0, 1.3, 2.4, 3.5, 4.3, 5.8):
+    for y in (0.42, -0.42):                                                   # twin main rails
+        b.box((2.95, y, (FRAME_BOT + FRAME_TOP) / 2), (7.3, 0.18, FRAME_TOP - FRAME_BOT), M["green"])
+    for x in (-0.55, 0.0, 1.3, 2.4, 3.5, 4.3, 5.6, 6.4):
         b.box((x, 0, FRAME_TOP - 0.12), (0.14, 0.84, 0.18), M["green"])
-    # axle carrier housings (outer tubes of the tread-adjust telescopes)
-    for x in (0.0, WB):
+    for x in (0.0, WB):                                                       # axle carriers (outer telescopes)
         for s in (1, -1):
-            b.box((x, s * 0.80, FRAME_TOP - 0.16), (0.30, 0.78, 0.26), M["green"])
-    # rear boom mount tower
-    b.box((-0.92, 0, (LOWER_PIV.z + UPPER_PIV.z) / 2), (0.22, 1.10, 0.95), M["green"])
-    # boom cradles (fold rests) beside the cab
+            b.box((x, s * 0.80, FRAME_TOP - 0.16), (0.32, 0.78, 0.28), M["green"])
+    # rear boom mount tower behind the tank
+    b.box((-0.52, 0, (LOWER_PIV.z + UPPER_PIV.z) / 2 - 0.15), (0.24, 1.10, 1.10), M["green"])
+    b.box((-0.40, 0, FRAME_TOP + 0.05), (0.40, 1.10, 0.12), M["green"])
+    # boom cradles (fold rests) beside the cab front corners
     for s in (1, -1):
-        b.box((4.55, s * 1.25, 2.12), (0.16, 0.70, 0.10), M["black"])
-        b.box((4.55, s * 1.70, 2.20), (0.30, 0.30, 0.12), M["black"])
-        b.box((4.55, s * 1.25, 1.98), (0.12, 0.12, 0.28), M["black"])
-    # side walkway (left) from ladder to door
-    b.box((5.2, 1.08, CAB_FLOOR - 0.06), (1.9, 0.30, 0.04), M["dsteel"])
-part("chassis_frame", chassis, frame, bevel=0.01)
+        b.box((CRADLE_X, s * 1.30, 2.16), (0.14, 0.80, 0.12), M["green"])
+        b.box((CRADLE_X, s * 1.78, 2.24), (0.30, 0.36, 0.06), M["black"])
+        b.box((CRADLE_X, s * 1.78, 2.33), (0.30, 0.06, 0.18), M["black"])
+        b.tube((CRADLE_X, s * 0.95, FRAME_TOP - 0.1), (CRADLE_X, s * 1.25, 2.12), 0.04, M["green"])
+    # entry platform at the ladder top (left)
+    b.box((5.30, 1.08, CAB_FLOOR - 0.08), (0.75, 0.34, 0.05), M["dsteel"])
+    for x in (4.98, 5.62):
+        b.tube((x, 1.24, CAB_FLOOR - 0.06), (x, 1.24, CAB_FLOOR + 0.85), 0.018, M["yellow"])
+    b.tube((4.98, 1.24, CAB_FLOOR + 0.85), (5.62, 1.24, CAB_FLOOR + 0.85), 0.018, M["yellow"])
+part("chassis_frame", chassis, frame, bevel=0.012)
 
 # ============================================================================= WHEEL LEGS
+def tire_profile():
+    """Half-section of a 380/105R50 tire: (radius, lateral offset)."""
+    w = TIRE_W / 2
+    R = TIRE_R
+    pts = [(RIM_R + 0.005, -w * 0.86), (RIM_R + 0.07, -w * 0.97), (RIM_R + 0.20, -w * 1.02),
+           (R - 0.16, -w * 1.00), (R - 0.07, -w * 0.93), (R - 0.025, -w * 0.78), (R - 0.02, 0.0),
+           (R - 0.025, w * 0.78), (R - 0.07, w * 0.93), (R - 0.16, w * 1.00), (RIM_R + 0.20, w * 1.02),
+           (RIM_R + 0.07, w * 0.97), (RIM_R + 0.005, w * 0.86)]
+    return pts
+
 def build_leg(tag_, x, side, front):
     y_wheel = side * TREAD0 / 2
     y_leg = side * (TREAD0 / 2 - LEG_INSET)
@@ -271,150 +373,206 @@ def build_leg(tag_, x, side, front):
     tread_piv = empty(f"PIV_tread_{tag_}", (x, y_leg, FRAME_TOP - 0.16), chassis)
 
     def inner_tube(b):   # inner telescoping axle beam, slides with the tread
-        b.box((x, y_leg - side * 0.55, FRAME_TOP - 0.16), (0.22, 1.10, 0.20), M["green"])
-        b.box((x, y_leg, FRAME_TOP - 0.10), (0.36, 0.36, 0.34), M["green"])
-    part(f"axle_beam_{tag_}", tread_piv, inner_tube, bevel=0.01)
+        b.box((x, y_leg - side * 0.55, FRAME_TOP - 0.16), (0.24, 1.10, 0.22), M["green"])
+        b.box((x, y_leg, FRAME_TOP - 0.08), (0.42, 0.40, 0.40), M["green_d"])
+    part(f"axle_beam_{tag_}", tread_piv, inner_tube, bevel=0.02)
 
     def strut_body(b):
-        b.cyl((x, y_leg, FRAME_TOP - 0.42), 0.13, 0.55, M["dsteel"])
-        b.cyl((x, y_leg, FRAME_TOP - 0.12), 0.17, 0.12, M["black"])  # air spring
-    o = part(f"SVC_strut_{tag_}" if tag_ == "FL" else f"strut_body_{tag_}", tread_piv, strut_body, smooth=True)
+        b.cyl((x, y_leg, FRAME_TOP - 0.42), 0.14, 0.55, M["green_d"])
+        b.cyl((x, y_leg, FRAME_TOP + 0.20), 0.19, 0.22, M["black"], segs=32)   # air spring
+    o = part(f"SVC_strut_{tag_}" if tag_ == "FL" else f"strut_body_{tag_}", tread_piv, strut_body)
     if tag_ == "FL":
         tag(o, "service_point", "sp_strut_FL", "Front-left air-ride strut")
 
     susp = empty(f"PIV_susp_{tag_}", (x, y_leg, FRAME_TOP - 0.16), tread_piv)
 
     def strut_rod(b):
-        b.cyl((x, y_leg, hub_z + 0.55), 0.085, 0.75, M["steel"])
-        b.cyl((x, y_leg, hub_z + 0.10), 0.16, 0.30, M["green"])   # leg knuckle
-    part(f"strut_rod_{tag_}", susp, strut_rod, smooth=True)
+        b.cyl((x, y_leg, hub_z + 0.55), 0.09, 0.75, M["steel"])
+        b.cyl((x, y_leg, hub_z + 0.12), 0.18, 0.34, M["green_d"])   # cast leg knuckle
+    part(f"strut_rod_{tag_}", susp, strut_rod)
+
+    if not front:   # rear mud flap with tail light, like production machines
+        def flap(b):
+            fx = x - TIRE_R - 0.14
+            b.box((fx, y_wheel, 0.95), (0.03, TIRE_W + 0.14, 1.0), M["black"])
+            b.box((fx - 0.02, y_wheel, 0.62), (0.03, 0.22, 0.10), M["tail"])
+            b.tube((fx + 0.02, y_wheel - side * 0.1, 1.45), (x - 0.25, y_leg, hub_z + 0.45), 0.035, M["black"])
+            ring = []
+            for k in range(13):                                   # top-rear arc over the wheel
+                a = math.radians(95 + 85 * k / 12)
+                ring.append((x + (TIRE_R + 0.10) * math.cos(a), hub_z + (TIRE_R + 0.10) * math.sin(a)))
+            for (ax_, az), (bx_, bz) in zip(ring, ring[1:]):
+                b.box(((ax_ + bx_) / 2, y_wheel, (az + bz) / 2), (math.hypot(bx_ - ax_, bz - az) + 0.01, TIRE_W + 0.14, 0.025),
+                      M["black"], rot=Matrix.Rotation(-math.atan2(bz - az, bx_ - ax_), 3, "Y"))
+        part(f"mudflap_{tag_}", susp, flap, smooth=False)
 
     steer_parent = susp
     if front:
         steer_parent = empty(f"PIV_steer_{tag_}", (x, y_leg, hub_z), susp)
+        def fender(b):   # black front fender over the top-rear of the tyre, steers with the wheel
+            pts = []
+            for k in range(15):
+                a = math.radians(40 + 120 * k / 14)
+                pts.append((x + (TIRE_R + 0.09) * math.cos(a), hub_z + (TIRE_R + 0.09) * math.sin(a)))
+            for (ax_, az), (bx_, bz) in zip(pts, pts[1:]):
+                b.box(((ax_ + bx_) / 2, y_wheel, (az + bz) / 2), (math.hypot(bx_ - ax_, bz - az) + 0.01, TIRE_W + 0.16, 0.025),
+                      M["black"], rot=Matrix.Rotation(-math.atan2(bz - az, bx_ - ax_), 3, "Y"))
+            b.tube((x, y_leg, hub_z + 0.75), (x, y_wheel - side * 0.05, hub_z + TIRE_R + 0.08), 0.03, M["black"])
+        part(f"fender_{tag_}", steer_parent, fender)
 
     def hub(b):
-        b.cyl((x, (y_leg + y_wheel) / 2 - side * 0.02, hub_z), 0.27, abs(y_wheel - y_leg) - 0.05, M["engine"], axis="Y")
-        b.cyl((x, y_leg, hub_z), 0.2, 0.25, M["green"], axis="Y")
-    o = part(f"SVC_wheel_motor_{tag_}" if tag_ == "FL" else f"wheel_motor_{tag_}", steer_parent, hub, smooth=True)
+        b.cyl((x, (y_leg + y_wheel) / 2 - side * 0.02, hub_z), 0.27, abs(y_wheel - y_leg) - 0.05, M["green_d"], axis="Y", segs=32)
+        b.cyl((x, y_leg, hub_z), 0.21, 0.26, M["green_d"], axis="Y", segs=32)
+    o = part(f"SVC_wheel_motor_{tag_}" if tag_ == "FL" else f"wheel_motor_{tag_}", steer_parent, hub)
     if tag_ == "FL":
         tag(o, "service_point", "sp_wheel_motor_FL", "Front-left wheel motor / final drive")
 
     roll = empty(f"PIV_roll_{tag_}", (x, y_wheel, hub_z), steer_parent)
 
     def tire(b):
-        b.cyl((x, y_wheel, hub_z), TIRE_R - 0.03, TIRE_W, M["tire"], axis="Y", segs=48)
-        n = 36  # tread lugs (R1-W style chevrons)
+        b.lathe((x, y_wheel, hub_z), tire_profile(), M["tire"], steps=72)
+        n = 34   # R1W bar lugs: two offset rows meeting near the centre (chevron)
         for i in range(n):
-            a = 2 * math.pi * i / n
             for s2 in (1, -1):
-                c = Vector((x + (TIRE_R - 0.02) * math.cos(a), y_wheel + s2 * TIRE_W * 0.24, hub_z + (TIRE_R - 0.02) * math.sin(a)))
-                rot = Matrix.Rotation(-a, 3, "Y") @ Matrix.Rotation(s2 * 0.45, 3, "X")
-                b.box(c, (0.035, TIRE_W * 0.5, 0.07), M["tire"], rot=rot)
-    part(f"tire_{tag_}", roll, tire, bevel=0.0, smooth=False)
+                a = 2 * math.pi * (i + (0.5 if s2 < 0 else 0)) / n
+                rr = TIRE_R - 0.005
+                c = Vector((x + rr * math.cos(a), y_wheel + s2 * TIRE_W * 0.25, hub_z + rr * math.sin(a)))
+                rot = Matrix.Rotation(-a + math.pi / 2, 3, "Y") @ Matrix.Rotation(s2 * 0.62, 3, "Z")
+                b.box(c, (0.055, TIRE_W * 0.56, 0.055), M["tire"], rot=rot)
+    part(f"tire_{tag_}", roll, tire)
 
     def rim(b):
-        b.cyl((x, y_wheel + side * 0.01, hub_z), RIM_R, TIRE_W * 0.92, M["yellow"], axis="Y", segs=40)
-        b.cyl((x, y_wheel + side * TIRE_W * 0.47, hub_z), 0.30, 0.03, M["yellow"], axis="Y")
+        w = TIRE_W * 0.86
+        b.lathe((x, y_wheel, hub_z), [(RIM_R + 0.025, -w / 2), (RIM_R, -w / 2 + 0.02), (RIM_R, w / 2 - 0.02), (RIM_R + 0.025, w / 2)],
+                M["yellow"], steps=64)
+        sgn = side
+        b.lathe((x, y_wheel, hub_z), [(RIM_R - 0.005, sgn * 0.02), (0.42, sgn * 0.09), (0.30, sgn * 0.12), (0.0, sgn * 0.12)],
+                M["yellow"], steps=48)
+        b.cyl((x, y_wheel + sgn * 0.13, hub_z), 0.16, 0.06, M["yellow"], axis="Y", segs=32)
         for i in range(10):
             a = 2 * math.pi * i / 10
-            b.cyl((x + 0.22 * math.cos(a), y_wheel + side * TIRE_W * 0.49, hub_z + 0.22 * math.sin(a)), 0.022, 0.03, M["dsteel"], axis="Y", segs=6)
+            b.cyl((x + 0.215 * math.cos(a), y_wheel + sgn * 0.13, hub_z + 0.215 * math.sin(a)), 0.024, 0.05, M["dsteel"], axis="Y", segs=6)
+        for i in range(8):        # hand holes in the disc
+            a = 2 * math.pi * (i + 0.5) / 8
+            b.cyl((x + 0.50 * math.cos(a), y_wheel + sgn * 0.055, hub_z + 0.50 * math.sin(a)), 0.055, 0.03, M["black"], axis="Y", segs=16)
     part(f"rim_{tag_}", roll, rim)
 
 for tag_, x, side, front in (("FL", WB, 1, True), ("FR", WB, -1, True), ("RL", 0.0, 1, False), ("RR", 0.0, -1, False)):
     build_leg(tag_, x, side, front)
 
-# ============================================================================= POWERTRAIN / REAR
-ENG_X0, ENG_X1 = -0.82, 1.25
-ENG_TOP = 2.92
-
-def engine(b):
-    b.box((0.25, 0, 2.15), (1.25, 0.62, 0.62), M["engine"])          # 9.0 L block
-    b.box((0.25, 0, 2.55), (1.15, 0.38, 0.20), M["engine"])          # valve cover
-    b.cyl((-0.25, 0.30, 2.45), 0.14, 0.2, M["dsteel"], axis="Y")     # turbo
-    b.cyl((0.9, -0.36, 2.05), 0.12, 0.30, M["dsteel"], axis="Y")     # hydro pump drive
-    b.box((0.95, 0, 2.05), (0.25, 0.55, 0.5), M["dsteel"])           # pump drive gearbox
-part("engine_block", chassis, engine, bevel=0.01)
-
-def svc(name, ref, label, fn):
-    o = part(name, chassis, fn, smooth=True)
+# ============================================================================= ENGINE (front, under the nose)
+def svc(name, ref, label, fn, parent=None):
+    o = part(name, parent or chassis, fn)
     tag(o, "service_point", ref, label)
     return o
 
+def engine(b):
+    b.box((5.80, 0, 2.05), (1.15, 0.62, 0.62), M["engine"])          # 9.0 L PowerTech block
+    b.box((5.80, 0, 2.45), (1.05, 0.40, 0.20), M["engine"])          # valve cover
+    b.cyl((5.30, 0.32, 2.38), 0.13, 0.2, M["dsteel"], axis="Y")      # turbo
+    b.box((5.15, 0, 1.95), (0.25, 0.70, 0.55), M["dsteel"])          # hydrostatic pump drive
+    b.cyl((5.15, -0.42, 1.95), 0.12, 0.25, M["dsteel"], axis="Y")
+    for y in (0.48, -0.48):
+        b.box((5.85, y, 1.80), (1.5, 0.08, 0.30), M["green"])         # nose sub-frame
+part("engine_block", chassis, engine, bevel=0.01)
+
 svc("SVC_engine_oil", "sp_engine_oil", "Engine oil dipstick and fill",
-    lambda b: b.cyl((0.75, 0.38, 2.62), 0.035, 0.22, M["yellow"]).cyl((0.75, 0.38, 2.75), 0.05, 0.04, M["yellow"]))
+    lambda b: b.cyl((6.05, 0.36, 2.55), 0.03, 0.24, M["yellow"]).cyl((6.05, 0.36, 2.68), 0.045, 0.04, M["yellow"]))
 svc("SVC_air_filter", "sp_air_filter", "Engine air filter housing",
-    lambda b: b.cyl((-0.30, -0.42, 2.48), 0.17, 0.62, M["black"], axis="X").cyl((-0.65, -0.42, 2.48), 0.05, 0.08, M["yellow"], axis="X"))
+    lambda b: b.cyl((5.80, -0.38, 2.48), 0.15, 0.62, M["black"], axis="X").cyl((5.45, -0.38, 2.48), 0.05, 0.08, M["yellow"], axis="X"))
 svc("SVC_fuel_filter", "sp_fuel_filter", "Fuel filters / water separator",
-    lambda b: b.cyl((0.55, -0.44, 2.15), 0.06, 0.24, M["white"]).cyl((0.72, -0.44, 2.15), 0.06, 0.24, M["white"]))
+    lambda b: b.cyl((6.15, -0.40, 2.05), 0.055, 0.24, M["white"]).cyl((6.30, -0.40, 2.05), 0.055, 0.24, M["white"]))
 svc("SVC_cooling", "sp_cooling", "Cooling package (radiator / charge-air cooler)",
-    lambda b: b.box((-0.66, 0, 2.30), (0.18, 1.30, 0.95), M["dsteel"]))
+    lambda b: b.box((6.52, 0, 2.25), (0.16, 0.95, 0.85), M["dsteel"]))
 svc("SVC_hyd_reservoir", "sp_hyd_reservoir", "Hydraulic reservoir (98.4 L)",
-    lambda b: b.box((0.55, -0.95, 1.95), (0.55, 0.30, 0.45), M["green"]).cyl((0.55, -0.95, 2.20), 0.05, 0.06, M["black"]).box((0.55, -1.105, 1.95), (0.12, 0.01, 0.2), M["glass"]))
+    lambda b: b.box((3.35, -0.92, 1.95), (0.50, 0.32, 0.45), M["green"]).cyl((3.35, -0.92, 2.20), 0.05, 0.06, M["black"]).box((3.35, -1.085, 1.95), (0.12, 0.01, 0.2), M["glass"]))
 svc("SVC_battery", "sp_battery", "Battery box / disconnect",
-    lambda b: b.box((3.75, 0.82, 1.70), (0.45, 0.32, 0.30), M["black"]).cyl((3.75, 0.99, 1.75), 0.03, 0.05, M["red"], axis="Y"))
+    lambda b: b.box((3.40, 0.86, 1.72), (0.45, 0.30, 0.30), M["black"]).cyl((3.40, 1.02, 1.78), 0.03, 0.05, M["red"], axis="Y"))
 svc("SVC_air_tank", "sp_air_tank", "Onboard air compressor tank",
     lambda b: b.cyl((2.0, 0, FRAME_BOT + 0.12), 0.11, 0.9, M["dsteel"], axis="X"))
 
-# fuel + DEF (right side)
-def fuel(b):
-    b.box((2.15, -0.98, 1.92), (1.55, 0.45, 0.62), M["black"])    # 565 L
-part("fuel_tank", chassis, fuel, bevel=0.03)
-svc("SVC_fuel_fill", "sp_fuel_fill", "Fuel fill (565 L)", lambda b: b.cyl((2.70, -1.24, 2.15), 0.06, 0.08, M["yellow"], axis="Y"))
-svc("SVC_def_fill", "sp_def_fill", "DEF fill (29.5 L)",
-    lambda b: b.box((3.15, -0.98, 1.95), (0.32, 0.40, 0.40), M["white"]).cyl((3.15, -1.21, 2.08), 0.05, 0.06, M["blue"], axis="Y"))
+# exhaust stack at the left front corner of the cab
+part("exhaust_stack", chassis, lambda b: b.cyl((NOSE_X0 + 0.10, 0.50, 3.35), 0.075, 1.30, M["black"])
+     .cyl((NOSE_X0 + 0.10, 0.50, 4.03), 0.085, 0.08, M["black"]).box((NOSE_X0 + 0.10, 0.50, 2.80), (0.20, 0.20, 0.25), M["dsteel"]))
 
-# engine hood, pivots at its front top edge
-hood_piv = empty("PIV_hood", (ENG_X1, 0, ENG_TOP), chassis)
+# fuel + DEF (right side, between the axles)
+part("fuel_tank", chassis, lambda b: b.box((2.10, -0.98, 1.92), (1.55, 0.45, 0.62), M["black"]), bevel=0.04)
+svc("SVC_fuel_fill", "sp_fuel_fill", "Fuel fill (565 L)", lambda b: b.cyl((2.60, -1.24, 2.15), 0.06, 0.08, M["yellow"], axis="Y"))
+svc("SVC_def_fill", "sp_def_fill", "DEF fill (29.5 L)",
+    lambda b: b.box((3.05, -0.98, 1.95), (0.30, 0.40, 0.40), M["white"]).cyl((3.05, -1.21, 2.08), 0.05, 0.06, M["blue"], axis="Y"))
+
+# engine hood / nose: hinged at the cab, the front tilts up (grille goes with it)
+hood_piv = empty("PIV_hood", (NOSE_X0 + 0.02, 0, 2.97), chassis)
 def hood(b):
-    b.box((0.22, 0, 2.68), (2.10, 1.50, 0.48), M["green"])
-    b.box((0.22, 0.76, 2.25), (2.10, 0.03, 0.70), M["green"])
-    b.box((0.22, -0.76, 2.25), (2.10, 0.03, 0.70), M["green"])
-    b.box((ENG_X0 - 0.02, 0, 2.28), (0.04, 1.50, 0.95), M["black"])  # rear grille
-    for i in range(9):
-        b.box((ENG_X0 - 0.05, 0, 1.9 + i * 0.095), (0.02, 1.4, 0.02), M["dsteel"])
-    b.cyl((-0.1, 0.45, 3.05), 0.07, 0.35, M["black"])               # exhaust stack
-    b.box((-0.84, 0.55, 2.75), (0.04, 0.18, 0.08), M["lens"])
-    b.box((-0.84, -0.55, 2.75), (0.04, 0.18, 0.08), M["lens"])
-part("engine_hood", hood_piv, hood, bevel=0.02)
-o = part("CTL_hood_latch", hood_piv, lambda b: b.box((ENG_X0 - 0.07, 0, 2.02), (0.06, 0.16, 0.05), M["yellow"]))
+    secs = []
+    for t, w, z0, z1, r in ((0.00, 0.58, 1.70, 2.97, 0.20), (0.45, 0.58, 1.70, 2.96, 0.22),
+                            (0.85, 0.57, 1.72, 2.92, 0.22), (1.00, 0.55, 1.74, 2.86, 0.21)):
+        x = NOSE_X0 + 0.02 + t * (NOSE_X1 - NOSE_X0 - 0.06)
+        secs.append(rrect(x, w, z0, z1, r))
+    b.loft(secs, M["green"])
+    gx = NOSE_X1 - 0.02
+    b.loft([rrect(gx, 0.50, 1.80, 2.62, 0.16), rrect(gx + 0.06, 0.48, 1.82, 2.60, 0.15)], M["black_g"])   # grille
+    for i in range(7):
+        b.box((gx + 0.065, 0, 1.92 + i * 0.1), (0.01, 0.86, 0.025), M["black"])
+    b.box((gx + 0.07, 0, 2.48), (0.012, 0.16, 0.10), M["yellow"])                 # emblem plate
+    for s in (1, -1):
+        b.box((gx - 0.04, s * 0.36, 2.74), (0.08, 0.26, 0.07), M["lens"])         # LED headlight strips
+        b.box((NOSE_X0 + 0.9, s * 0.585, 2.45), (0.75, 0.01, 0.30), M["black"])   # side louvres
+        for i in range(6):
+            b.box((NOSE_X0 + 0.58 + i * 0.12, s * 0.592, 2.45), (0.04, 0.008, 0.26), M["dsteel"])
+part("engine_hood", hood_piv, hood, smooth=False)
+o = part("CTL_hood_latch", hood_piv, lambda b: b.box((NOSE_X1 + 0.06, 0, 1.76), (0.05, 0.16, 0.05), M["yellow"]))
 tag(o, "control", "ex_hood_latch", "Engine hood latch")
 
 # ============================================================================= SOLUTION SYSTEM
-TANK_X0, TANK_X1 = 1.32, 3.52
-TANK_A, TANK_B = 0.90, 0.73
-TANK_ZC = 1.88 + TANK_B
+TANK_X0, TANK_X1 = -0.25, 2.85
+TANK_A, TANK_B = 0.85, 0.55                # 1,200 gal: pi*a*b*L = 4.55 m^3
+TANK_ZC = 1.86 + TANK_B
 def tank(b):
     rot = Matrix.Rotation(math.pi / 2, 3, "Y") @ Matrix.Diagonal((TANK_B / TANK_A, 1, 1))
-    b.cyl(((TANK_X0 + TANK_X1) / 2, 0, TANK_ZC), TANK_A, TANK_X1 - TANK_X0, M["steel"], rot=rot, segs=48)
-    for x in (TANK_X0 + 0.25, TANK_X1 - 0.25):
-        b.box((x, 0, 1.92), (0.12, 1.5, 0.12), M["green"])
-    b.box(((TANK_X0 + TANK_X1) / 2, 0, TANK_ZC + TANK_B + 0.02), (1.6, 0.08, 0.04), M["dsteel"])  # top walkway rail
-part("solution_tank", chassis, tank, smooth=True)
-svc("SVC_tank_lid", "sp_solution_tank", "Solution tank lid (4,542 L)",
-    lambda b: b.cyl((2.0, 0, TANK_ZC + TANK_B + 0.02), 0.22, 0.08, M["black"], segs=32))
-svc("SVC_rinse_tank", "sp_rinse_tank", "Rinse tank (646 L)",
-    lambda b: b.box((3.84, 0, 2.30), (0.55, 1.40, 0.84), M["white"]).cyl((3.84, 0, 2.75), 0.1, 0.06, M["black"]))
+    b.cyl(((TANK_X0 + TANK_X1) / 2, 0, TANK_ZC), TANK_A, TANK_X1 - TANK_X0, M["steel"], rot=rot, segs=56)
+    for x in (TANK_X0 + 0.35, (TANK_X0 + TANK_X1) / 2, TANK_X1 - 0.35):        # green hold-down straps
+        b.cyl((x, 0, TANK_ZC), TANK_A + 0.012, 0.08, M["green"], rot=rot, segs=56)
+    for x in (TANK_X0 + 0.35, TANK_X1 - 0.35):
+        b.box((x, 0, 1.92), (0.14, 1.5, 0.12), M["green"])
+    for s in (1, -1):                                                             # top handrails
+        b.tube((TANK_X0 + 0.2, s * 0.62, TANK_ZC + TANK_B + 0.35), (TANK_X1 - 0.2, s * 0.62, TANK_ZC + TANK_B + 0.35), 0.02, M["yellow"])
+        for x in (TANK_X0 + 0.2, TANK_X1 - 0.2):
+            b.tube((x, s * 0.62, TANK_ZC + TANK_B * 0.6), (x, s * 0.62, TANK_ZC + TANK_B + 0.35), 0.02, M["yellow"])
+part("solution_tank", chassis, tank)
+def tank_lid(b):
+    b.cyl((2.25, 0.25, TANK_ZC + TANK_B), 0.22, 0.10, M["black"], segs=32)
+    b.cyl((2.25, 0.25, TANK_ZC + TANK_B + 0.06), 0.18, 0.04, M["yellow"], segs=32)
+svc("SVC_tank_lid", "sp_solution_tank", "Solution tank lid (4,542 L)", tank_lid)
+def rinse(b):   # black poly rinse tank sitting on top of the solution tank (as on production units)
+    secs = [rrect(x, 0.52, TANK_ZC + TANK_B - 0.06, TANK_ZC + TANK_B + 0.40, 0.14) for x in (0.10, 0.20, 1.60, 1.70)]
+    secs[0] = rrect(0.10, 0.46, TANK_ZC + TANK_B - 0.02, TANK_ZC + TANK_B + 0.34, 0.12)
+    secs[-1] = rrect(1.70, 0.46, TANK_ZC + TANK_B - 0.02, TANK_ZC + TANK_B + 0.34, 0.12)
+    b.loft(secs, M["black"])
+    b.cyl((1.2, 0, TANK_ZC + TANK_B + 0.42), 0.09, 0.06, M["dsteel"])
+svc("SVC_rinse_tank", "sp_rinse_tank", "Rinse tank (646 L)", rinse)
+part("handwash_tank", chassis, lambda b: b.cyl((-0.05, 0.40, TANK_ZC + TANK_B + 0.12), 0.17, 0.55, M["yellow"], axis="Y", segs=32))
 svc("SVC_solution_pump", "sp_solution_pump", "Solution pump (hydraulically driven centrifugal)",
     lambda b: b.cyl((2.4, 0, FRAME_BOT + 0.08), 0.17, 0.22, M["dsteel"], axis="Y").cyl((2.4, 0.18, FRAME_BOT + 0.08), 0.09, 0.15, M["red"], axis="Y"))
 
 # left-side fill station + plumbing panel
 def plumbing(b):
-    b.box((2.35, 1.02, 1.72), (1.25, 0.06, 0.40), M["green"])       # panel
-    b.tube((1.6, 1.08, 1.60), (3.1, 1.08, 1.60), 0.035, M["steel"])  # manifold
+    b.box((1.90, 1.00, 1.72), (1.35, 0.06, 0.42), M["green"])
+    b.tube((1.2, 1.08, 1.60), (2.7, 1.08, 1.60), 0.035, M["steel"])
     b.tube((2.4, 0.4, FRAME_BOT + 0.08), (2.4, 1.0, 1.60), 0.04, M["steel"])
+    b.tube((1.3, 1.08, 1.80), (2.6, 1.08, 1.80), 0.025, M["hose"])
 part("plumbing_panel", chassis, plumbing)
 svc("SVC_suction_strainer", "sp_suction_strainer", "Suction strainer (20 mesh)",
-    lambda b: b.cyl((1.75, 1.16, 1.68), 0.08, 0.26, M["white"]).cyl((1.75, 1.16, 1.84), 0.09, 0.05, M["black"]))
+    lambda b: b.cyl((1.35, 1.15, 1.68), 0.08, 0.26, M["white"]).cyl((1.35, 1.15, 1.84), 0.09, 0.05, M["black"]))
 svc("SVC_pressure_strainer", "sp_pressure_strainer", "Pressure strainer (50 mesh)",
-    lambda b: b.cyl((2.15, 1.16, 1.68), 0.07, 0.24, M["white"]).cyl((2.15, 1.16, 1.83), 0.08, 0.05, M["red"]))
+    lambda b: b.cyl((1.70, 1.15, 1.68), 0.07, 0.24, M["white"]).cyl((1.70, 1.15, 1.83), 0.08, 0.05, M["red"]))
 svc("SVC_quick_fill", "sp_quick_fill", "3 in quick-fill coupler (side fill)",
-    lambda b: b.cyl((3.0, 1.16, 1.62), 0.055, 0.14, M["black"], axis="Y").cyl((3.0, 1.24, 1.62), 0.07, 0.03, M["yellow"], axis="Y"))
-for i, x in enumerate((2.55, 2.75)):
+    lambda b: b.cyl((2.55, 1.16, 1.60), 0.055, 0.14, M["black"], axis="Y").cyl((2.55, 1.24, 1.60), 0.07, 0.03, M["yellow"], axis="Y"))
+for i, x in enumerate((2.05, 2.25)):
     part(f"valve_handle_{i}", chassis, lambda b, x=x: b.box((x, 1.10, 1.80), (0.04, 0.06, 0.16), M["yellow"]))
 
 # chemical eductor on a parallel-link arm (the hopper stays level)
-EDU_PIV = Vector((2.55, 1.06, 1.45))
+EDU_PIV = Vector((2.30, 1.06, 1.45))
 edu_piv = empty("PIV_eductor", EDU_PIV, chassis)
 def edu_arm(b):
     b.tube(EDU_PIV, EDU_PIV + Vector((0, 0, 0.62)), 0.03, M["green"])
@@ -425,58 +583,69 @@ def edu_hopper(b):
     c = EDU_PIV + Vector((0.06, 0.24, 0.62))
     b.cyl(c + Vector((0, 0, 0.18)), 0.22, 0.30, M["steel"], r2=0.24, segs=32)
     b.cyl(c, 0.05, 0.12, M["steel"], r2=0.2)
-    b.cyl(c + Vector((0, 0, 0.35)), 0.25, 0.03, M["yellow"], segs=32)
-part("eductor_hopper", edu_lvl, edu_hopper, smooth=True)
+    b.cyl(c + Vector((0, 0, 0.35)), 0.25, 0.03, M["black"], segs=32)
+part("eductor_hopper", edu_lvl, edu_hopper)
 o = part("CTL_eductor_handle", edu_lvl, lambda b: b.box(EDU_PIV + Vector((0.06, 0.50, 0.75)), (0.05, 0.10, 0.03), M["yellow"]))
 tag(o, "control", "ex_eductor", "Chemical eductor (lower/raise)")
 
-# ============================================================================= CAB
+# ============================================================================= CAB (authored in the cab frame, then shifted)
+cab = empty("cab_mount", (0, 0, 0), chassis)      # WORLD = cab frame origin; location shifted at the end
+
 def cab_shell(b):
     cx = (CAB_X0 + CAB_X1) / 2
-    b.box((cx, 0, CAB_FLOOR - 0.10), (CAB_X1 - CAB_X0 + 0.1, 2 * CAB_HW + 0.1, 0.20), M["green"])     # floor pan
-    b.box((cx - 0.05, 0, (FRAME_TOP + CAB_FLOOR) / 2 - 0.1), (1.6, 1.2, CAB_FLOOR - FRAME_TOP), M["green"])  # cab mount
-    for x in (CAB_X0 + 0.04, CAB_X1 - 0.04):
-        for y in (CAB_HW - 0.04, -CAB_HW + 0.04):
-            b.box((x, y, (CAB_FLOOR + CAB_ROOF) / 2), (0.08, 0.08, CAB_ROOF - CAB_FLOOR), M["black"])
-    b.box((CAB_X0 + 0.02, 0, (CAB_FLOOR + CAB_ROOF) / 2), (0.04, 2 * CAB_HW, CAB_ROOF - CAB_FLOOR), M["black"])  # rear wall
-    # roof with overhang + visor + StarFire receiver + beacons + lights
-    b.box((cx + 0.08, 0, CAB_ROOF + 0.08), (CAB_X1 - CAB_X0 + 0.35, 2 * CAB_HW + 0.25, 0.16), M["green"])
-    b.box((cx + 0.08, 0, CAB_ROOF + 0.17), (CAB_X1 - CAB_X0 + 0.15, 2 * CAB_HW + 0.05, 0.04), M["white"])
-    b.sphere((cx - 0.2, 0, CAB_ROOF + 0.26), 0.13, M["yellow"])
-    b.box((cx - 0.2, 0, CAB_ROOF + 0.2), (0.3, 0.3, 0.06), M["green"])
-    for y in (0.8, -0.8):
-        b.box((CAB_X1 + 0.20, y * 0.9, CAB_ROOF + 0.06), (0.04, 0.18, 0.08), M["lens"])
-        b.box((CAB_X1 + 0.20, y * 0.45, CAB_ROOF + 0.06), (0.04, 0.18, 0.08), M["lens"])
-        b.box((CAB_X0 - 0.12, y, CAB_ROOF + 0.06), (0.04, 0.16, 0.08), M["lens"])
-    b.cyl((CAB_X0 + 0.25, 0.85, CAB_ROOF + 0.25), 0.07, 0.14, M["amber"])
-    b.cyl((CAB_X0 + 0.25, -0.85, CAB_ROOF + 0.25), 0.07, 0.14, M["amber"])
-    # mirrors
+    z0 = CAB_FLOOR - 0.22
+    b.box((cx, 0, z0 + 0.10), (CAB_X1 - CAB_X0 + 0.06, 2 * CAB_HW + 0.06, 0.24), M["green"])          # floor pan
+    b.box((cx - 0.05, 0, (FRAME_TOP + z0) / 2 + 0.05), (1.5, 1.2, z0 - FRAME_TOP), M["green"])         # cab mount
+    b.box((cx, 0, CAB_FLOOR + 0.18), (CAB_X1 - CAB_X0, 2 * CAB_HW, 0.40), M["black"])                  # lower body
+    # pillars (A, B on the door side, C)
+    for x in (CAB_X0 + 0.05, CAB_X1 - 0.07):
+        for y in (CAB_HW - 0.05, -CAB_HW + 0.05):
+            b.box((x, y, (CAB_FLOOR + CAB_ROOF) / 2), (0.09, 0.09, CAB_ROOF - CAB_FLOOR), M["black_g"])
+    b.box((CAB_X1 - 0.55, -CAB_HW + 0.04, (CAB_FLOOR + CAB_ROOF) / 2), (0.06, 0.06, CAB_ROOF - CAB_FLOOR), M["black_g"])
+    b.box((CAB_X0 + 0.03, 0, CAB_FLOOR + 0.80), (0.05, 2 * CAB_HW, 0.85), M["black"])                 # rear lower wall
+    # roof: rounded green cap with black underside
+    rz0, rz1 = CAB_ROOF - 0.02, CAB_ROOF + 0.20
+    secs = [rrect(x, w, rz0, rz1, 0.10) for x, w in ((CAB_X0 - 0.12, 1.02), (CAB_X0 - 0.06, 1.08), (CAB_X1 + 0.10, 1.08), (CAB_X1 + 0.22, 1.00))]
+    b.loft(secs, M["green"])
+    b.box((cx + 0.05, 0, rz0 - 0.03), (CAB_X1 - CAB_X0 + 0.30, 2 * CAB_HW + 0.14, 0.06), M["black"])
+    for s in (1, -1):                                                                                 # roof LED lights
+        for y in (0.25, 0.62):
+            b.box((CAB_X1 + 0.22, s * y, CAB_ROOF + 0.07), (0.03, 0.26, 0.07), M["lens"])
+        b.box((CAB_X0 - 0.13, s * 0.75, CAB_ROOF + 0.07), (0.03, 0.22, 0.07), M["lens"])
+        b.cyl((CAB_X0 + 0.25, s * 0.82, CAB_ROOF + 0.30), 0.07, 0.16, M["amber"])                     # beacons
+    # StarFire receiver
+    b.cyl((cx + 0.35, 0, CAB_ROOF + 0.24), 0.17, 0.06, M["green"], segs=32)
+    b.sphere((cx + 0.35, 0, CAB_ROOF + 0.28), 0.15, M["black_g"], segs=24, scale=(1, 1, 0.55))
+    # mirrors on long arms from the front roof corners
     for s in (1, -1):
-        b.tube((CAB_X1 - 0.05, s * CAB_HW, CAB_ROOF - 0.3), (CAB_X1 + 0.2, s * (CAB_HW + 0.55), CAB_ROOF - 0.3), 0.02, M["black"])
-        b.box((CAB_X1 + 0.2, s * (CAB_HW + 0.55), CAB_ROOF - 0.5), (0.04, 0.22, 0.38), M["black"])
-    # front/hood nose under the windscreen, headlights
-    b.box((CAB_X1 + 0.12, 0, CAB_FLOOR - 0.25), (0.35, 1.7, 0.5), M["green"])
-    for y in (0.55, -0.55):
-        b.box((CAB_X1 + 0.30, y, CAB_FLOOR - 0.20), (0.03, 0.30, 0.10), M["lens"])
-    b.box((CAB_X1 + 0.31, 0, CAB_FLOOR - 0.33), (0.02, 0.6, 0.12), M["yellow"])  # deer-stripe badge stand-in
-part("cab_shell", chassis, cab_shell, bevel=0.012)
+        p0 = Vector((CAB_X1 + 0.05, s * (CAB_HW - 0.02), CAB_ROOF - 0.10))
+        p1 = Vector((CAB_X1 + 0.18, s * (CAB_HW + 0.55), CAB_ROOF - 0.25))
+        b.tube(p0, p1, 0.022, M["black"])
+        b.tube(p1, p1 + Vector((0, 0, -0.35)), 0.02, M["black"])
+        b.box(p1 + Vector((0.03, s * 0.05, -0.12)), (0.10, 0.22, 0.42), M["green"])
+        b.box(p1 + Vector((-0.025, s * 0.05, -0.12)), (0.01, 0.19, 0.38), M["steel"])
+        b.box(p1 + Vector((0.03, s * 0.05, -0.47)), (0.08, 0.18, 0.18), M["green"])                   # convex mirror
+part("cab_shell", cab, cab_shell, bevel=0.012)
 
 def cab_glass(b):
-    h = CAB_ROOF - CAB_FLOOR
-    zc = (CAB_FLOOR + CAB_ROOF) / 2
-    b.box((CAB_X1 - 0.02, 0, zc), (0.02, 2 * CAB_HW - 0.1, h - 0.04), M["glass"])               # windscreen
-    b.box(((CAB_X0 + CAB_X1) / 2, -CAB_HW + 0.02, zc), (CAB_X1 - CAB_X0 - 0.1, 0.02, h - 0.04), M["glass"])  # right side
-    b.box((CAB_X1 - 0.30, CAB_HW - 0.02, zc), (0.42, 0.02, h - 0.04), M["glass"])               # left fixed pane
-part("cab_glass", chassis, cab_glass)
+    h = CAB_ROOF - CAB_FLOOR - 0.38
+    zc = CAB_FLOOR + 0.38 + h / 2
+    tilt = Matrix.Rotation(math.radians(-6), 3, "Y")
+    b.box((CAB_X1 - 0.06, 0, zc), (0.02, 2 * CAB_HW - 0.12, h), M["glass"], rot=tilt)                 # windscreen (raked)
+    b.box(((CAB_X0 + CAB_X1) / 2, -CAB_HW + 0.03, (CAB_FLOOR + CAB_ROOF) / 2), (CAB_X1 - CAB_X0 - 0.12, 0.02, CAB_ROOF - CAB_FLOOR - 0.04), M["glass"])
+    b.box((CAB_X1 - 0.30, CAB_HW - 0.03, (CAB_FLOOR + CAB_ROOF) / 2), (0.36, 0.02, CAB_ROOF - CAB_FLOOR - 0.04), M["glass"])
+    b.box((CAB_X0 + 0.02, 0, CAB_ROOF - 0.55), (0.02, 2 * CAB_HW - 0.12, 1.0), M["glass"])            # rear window
+part("cab_glass", cab, cab_glass)
 
 # door: left side, hinged on the rear-left post
-DOOR_X0, DOOR_X1 = CAB_X0 + 0.10, CAB_X1 - 0.52
-door_piv = empty("PIV_cab_door", (DOOR_X0, CAB_HW, CAB_FLOOR), chassis)
+DOOR_X0, DOOR_X1 = CAB_X0 + 0.10, CAB_X1 - 0.50
+door_piv = empty("PIV_cab_door", (DOOR_X0, CAB_HW, CAB_FLOOR), cab)
 def door(b):
     h = CAB_ROOF - CAB_FLOOR - 0.06
     b.box(((DOOR_X0 + DOOR_X1) / 2, CAB_HW, CAB_FLOOR + h / 2 + 0.02), (DOOR_X1 - DOOR_X0, 0.02, h), M["glass"])
-    b.box(((DOOR_X0 + DOOR_X1) / 2, CAB_HW, CAB_FLOOR + 0.05), (DOOR_X1 - DOOR_X0, 0.04, 0.08), M["black"])
-    b.box((DOOR_X1 - 0.03, CAB_HW, CAB_FLOOR + h / 2), (0.05, 0.04, h), M["black"])
+    b.box(((DOOR_X0 + DOOR_X1) / 2, CAB_HW + 0.005, CAB_FLOOR + 0.20), (DOOR_X1 - DOOR_X0, 0.03, 0.36), M["black"])
+    b.box((DOOR_X1 - 0.03, CAB_HW, CAB_FLOOR + h / 2), (0.05, 0.04, h), M["black_g"])
+    b.box((DOOR_X0 + 0.02, CAB_HW, CAB_FLOOR + h / 2), (0.04, 0.04, h), M["black_g"])
 part("cab_door", door_piv, door)
 o = part("CTL_door_handle", door_piv, lambda b: b.box((DOOR_X1 - 0.10, CAB_HW + 0.04, CAB_FLOOR + 1.0), (0.16, 0.03, 0.04), M["dsteel"]))
 tag(o, "control", "ex_cab_door", "Cab door handle")
@@ -495,23 +664,24 @@ def interior(b):
         b.box((CAB_X1 - 0.30, y, CAB_FLOOR + 0.16), (0.06, 0.1, 0.16), M["dsteel"])  # brake / decel pedal
     b.box((CAB_X0 + 0.28, -0.75, CAB_FLOOR + 0.75), (0.35, 0.32, 0.25), M["black"])  # rear right console
     b.box((CAB_X1 - 0.10, 0.70, CAB_ROOF - 0.20), (0.15, 0.40, 0.20), M["black"])     # corner post display
-part("cab_interior", chassis, interior, bevel=0.01)
+part("cab_interior", cab, interior, bevel=0.01)
 
 # steering column (tilted) + steering wheel pivot
 COL_BASE = Vector((5.62, 0.02, CAB_FLOOR + 0.05))
 COL_TOP = Vector((5.42, 0.02, CAB_FLOOR + 0.95))
-part("steering_column", chassis, lambda b: b.tube(COL_BASE, COL_TOP, 0.06, M["black"], segs=16).box(COL_BASE + Vector((0, 0, 0.25)), (0.18, 0.28, 0.5), M["black"]))
-sw_tilt = empty("PIV_steering_tilt", COL_TOP, chassis)
+part("steering_column", cab, lambda b: b.tube(COL_BASE, COL_TOP, 0.06, M["black"], segs=16).box(COL_BASE + Vector((0, 0, 0.25)), (0.18, 0.28, 0.5), M["black"]))
+sw_tilt = empty("PIV_steering_tilt", COL_TOP, cab)
 sw_tilt.rotation_euler = (0, -math.atan2(COL_BASE.x - COL_TOP.x, COL_TOP.z - COL_BASE.z), 0)
 sw_piv = bpy.data.objects.new("PIV_steering_wheel", None); COLL.objects.link(sw_piv)
 sw_piv.parent = sw_tilt; sw_piv.empty_display_size = 0.1
 WORLD["PIV_steering_wheel"] = COL_TOP
 bw = Builder("CTL_steering_wheel", sw_piv, local=True)
-bw.cyl((0, 0, 0.02), 0.20, 0.035, M["black"], segs=40)
-bw.cyl((0, 0, 0.02), 0.17, 0.04, M["black"], segs=40)  # (rim approximated as a solid ring disk; thin)
+bw.lathe((0, 0, 0.02), [(0.17, -0.015), (0.20, -0.02), (0.215, 0.0), (0.20, 0.02), (0.17, 0.015), (0.17, -0.015)], M["black"], axis="Z", steps=40)
+for a in (0, 2.3, 4.0):
+    bw.box((0.09 * math.cos(a), 0.09 * math.sin(a), 0.02), (0.18, 0.03, 0.015), M["black"], rot=Matrix.Rotation(a, 3, "Z"))
 bw.cyl((0, 0, 0.03), 0.05, 0.05, M["green"], segs=20)
 bw.box((0.13, 0, 0.035), (0.02, 0.02, 0.02), M["yellow"])  # spinner / position mark
-o = bw.done(smooth=True)
+o = bw.done()
 tag(o, "control", "ca_steering_wheel", "Steering wheel")
 
 # ---------------------------------------------------------------- CommandARM
@@ -523,14 +693,14 @@ def commandarm(b):
     b.box((4.90, CA_Y, CA_Z + 0.055), (0.38, 0.17, 0.03), M["seat"])              # padded rest
     b.box((5.22, CA_Y - 0.02, CA_Z + 0.045), (0.28, 0.22, 0.02), M["black"])     # switch deck
     b.tube((5.30, CA_Y - 0.12, CA_Z), (5.48, CA_Y - 0.28, CA_Z + 0.35), 0.022, M["dsteel"])  # display arm
-part("commandarm_body", chassis, commandarm, bevel=0.008)
+part("commandarm_body", cab, commandarm, bevel=0.008)
 
 DSP_C = Vector((5.50, CA_Y - 0.30, CA_Z + 0.42))
 def display(b):
     rot = Matrix.Rotation(math.radians(-25), 3, "Z") @ Matrix.Rotation(math.radians(-15), 3, "Y")
     b.box(DSP_C, (0.03, 0.28, 0.19), M["black"], rot=rot)
     b.box(DSP_C + rot @ Vector((-0.016, 0, 0)), (0.002, 0.25, 0.165), M["screen"], rot=rot)
-o = part("DSP_commandcenter", chassis, display)
+o = part("DSP_commandcenter", cab, display)
 tag(o, "control", "ca_display", "CommandCenter touchscreen")
 # live screen: a UV-mapped quad facing the operator (the viewer paints a canvas onto it)
 _rot = Matrix.Rotation(math.radians(-25), 3, "Z") @ Matrix.Rotation(math.radians(-15), 3, "Y")
@@ -542,13 +712,12 @@ _r = bmesh.ops.create_grid(_scr.bm, x_segments=1, y_segments=1, size=1.0, matrix
 _scr._tag(_r["verts"], mat("Display_Screen", srgb("0B1F12"), 0.0, 0.3, emit=srgb("1D4D2A")))
 tag(_scr.done(), "control", "ca_display", "CommandCenter touchscreen")
 
-def switch(name, ref, label, pos, m, size=(0.022, 0.016, 0.012), parent=chassis):
+def switch(name, ref, label, pos, m, size=(0.022, 0.016, 0.012), parent=cab):
     o = part(name, parent, lambda b: b.box(pos, size, m), bevel=0.002)
     tag(o, "control", ref, label)
     return o
 
 DECK_Z = CA_Z + 0.062
-# rows of switches on the deck: (mesh, control id, label, dx, dy, material)
 deck = [
     ("SW_fold_L_out", "ca_fold_L_out", "Left main fold OUT",   5.13,  0.045, "btn_k"),
     ("SW_fold_L_in",  "ca_fold_L_in",  "Left main fold IN",    5.16,  0.045, "btn_k"),
@@ -566,12 +735,12 @@ deck = [
 ]
 for name, ref, label, x, dy, mm in deck:
     switch(name, ref, label, (x, CA_Y - 0.02 + dy, DECK_Z), M[mm])
-o = part("CTL_throttle", chassis, lambda b: b.cyl((5.08, CA_Y - 0.10, DECK_Z + 0.01), 0.022, 0.025, M["btn_k"], segs=20), smooth=True)
+o = part("CTL_throttle", cab, lambda b: b.cyl((5.08, CA_Y - 0.10, DECK_Z + 0.01), 0.022, 0.025, M["btn_k"], segs=20))
 tag(o, "control", "ca_throttle", "Engine throttle")
 
 # hydro handle: lever pivots about the lateral axis at the front of the arm
 HH_PIV = Vector((5.36, CA_Y, CA_Z + 0.04))
-hh_piv = empty("PIV_hydro_handle", HH_PIV, chassis, size=0.08)
+hh_piv = empty("PIV_hydro_handle", HH_PIV, cab, size=0.08)
 def hh(b):
     b.box(HH_PIV + Vector((0, 0, 0.07)), (0.03, 0.03, 0.14), M["black"])
     b.box(HH_PIV + Vector((0.01, 0, 0.17)), (0.07, 0.055, 0.09), M["black"])       # grip
@@ -594,102 +763,131 @@ hh_buttons = [
 for name, ref, label, (dx, dz), mm in hh_buttons:
     switch(name, ref, label, G + Vector((dx, 0, dz)), M[mm], size=(0.012, 0.006, 0.012), parent=hh_piv)
 
-# ---------------------------------------------------------------- ladder (left front, hydraulic)
-LAD_PIV = Vector((5.62, 1.16, CAB_FLOOR - 0.06))
+# shift the whole cab (shell, interior, controls) into its real position over the front axle
+cab.location.x += CAB_DX
+
+# ---------------------------------------------------------------- ladder (left front, hydraulic, green)
+LAD_PIV = Vector((5.48, 1.20, CAB_FLOOR - 0.10))
+LAD_BOT = Vector((6.05, 1.24, 0.30))
 lad_piv = empty("PIV_ladder", LAD_PIV, chassis)
 def ladder(b):
-    bot = LAD_PIV.z - 0.40
-    for dx in (-0.22, 0.22):
-        b.tube(LAD_PIV + Vector((dx, 0, 0)), Vector((LAD_PIV.x + dx, LAD_PIV.y + 0.05, 0.40)), 0.025, M["dsteel"])
-    n = 6
+    for dy in (-0.24, 0.24):
+        b.bar(LAD_PIV + Vector((0, dy, 0)), LAD_BOT + Vector((0, dy, 0)), 0.05, M["green"])
+    n = 7
     for i in range(n):
-        z = 0.45 + i * (LAD_PIV.z - 0.5) / (n - 1)
-        b.box((LAD_PIV.x, LAD_PIV.y + 0.04, z), (0.42, 0.14, 0.03), M["dsteel"])
+        p = LAD_BOT.lerp(LAD_PIV, (i + 0.3) / n)
+        b.box(p, (0.16, 0.46, 0.035), M["green"])
+    rail_top = LAD_PIV + Vector((0.05, 0.27, 0.0))
+    b.tube(LAD_BOT + Vector((0, 0.27, 0.95)), rail_top + Vector((0, 0, 0.55)), 0.02, M["green"])   # handrail
 part("ladder", lad_piv, ladder)
-o = part("SW_ladder_ground", chassis, lambda b: b.box((5.30, 1.10, 1.55), (0.06, 0.03, 0.08), M["btn_y"]))
+o = part("SW_ladder_ground", chassis, lambda b: b.box((5.25, 1.12, 1.62), (0.06, 0.03, 0.08), M["btn_y"]))
 tag(o, "control", "ex_ladder_switch", "Ground-level ladder switch")
 
-# ============================================================================= BOOM
+# ============================================================================= BOOM (green steel)
 lift_u = empty("PIV_lift_upper", UPPER_PIV, chassis)
 lift_l = empty("PIV_lift_lower", LOWER_PIV, chassis)
 for piv, nm in ((lift_u, "lift_arm_upper"), (lift_l, "lift_arm_lower")):
     p0 = WORLD[piv.name]
     def arms(b, p0=p0):
-        for y in (0.42, -0.42):
-            b.box(p0 + Vector((-ARM_L / 2, y, 0)), (ARM_L, 0.10, 0.14), M["green"])
-            b.cyl(p0 + Vector((0, y, 0)), 0.07, 0.14, M["dsteel"], axis="Y")
-            b.cyl(p0 + Vector((-ARM_L, y, 0)), 0.07, 0.14, M["dsteel"], axis="Y")
-    part(nm, piv, arms)
+        for y in (0.45, -0.45):
+            b.box(p0 + Vector((-ARM_L / 2, y, 0)), (ARM_L, 0.12, 0.16), M["green"])
+            b.cyl(p0 + Vector((0, y, 0)), 0.08, 0.16, M["dsteel"], axis="Y")
+            b.cyl(p0 + Vector((-ARM_L, y, 0)), 0.08, 0.16, M["dsteel"], axis="Y")
+    part(nm, piv, arms, bevel=0.01)
 
 center = empty("PIV_boom_center", (BOOM_X, 0, UPPER_PIV.z), lift_u)
+CF_TOP = UPPER_PIV.z + 0.45
 def center_frame(b):
-    zt = UPPER_PIV.z + 0.05
-    b.box((BOOM_X - 0.10, 0, (BOOM_CHORD_Z + zt) / 2), (0.16, 1.2, zt - BOOM_CHORD_Z), M["green"])    # mast
-    b.box((BOOM_X - 0.25, 0, BOOM_CHORD_Z + 0.06), (0.40, 2 * Y_HINGE, 0.14), M["green"])            # bottom beam
-    b.box((BOOM_X - 0.25, 0, BOOM_CHORD_Z + 0.75), (0.30, 2 * Y_HINGE - 0.2, 0.12), M["green"])      # top beam
-    for y in (Y_HINGE - 0.08, -Y_HINGE + 0.08, 0.6, -0.6):
-        b.box((BOOM_X - 0.25, y, BOOM_CHORD_Z + 0.40), (0.30, 0.10, 0.72), M["green"])
-    b.tube((BOOM_X - 0.40, Y_HINGE, BOOM_CHORD_Z), (BOOM_X - 0.40, -Y_HINGE, BOOM_CHORD_Z), 0.022, M["steel"])  # spray pipe
-    for k in range(int(Y_HINGE / S["nozzle_spacing_m"] - 0.5) + 1):        # centre-section nozzles
+    zb = BOOM_CHORD_Z
+    xb = BOOM_X - 0.30
+    for y in (Y_HINGE - 0.06, -Y_HINGE + 0.06, 0.55, -0.55):                     # uprights
+        b.box((xb, y, (zb + CF_TOP) / 2), (0.14, 0.12, CF_TOP - zb), M["green"])
+    for z in (zb + 0.06, zb + 0.70, CF_TOP - 0.06):                               # cross beams
+        b.box((xb, 0, z), (0.16, 2 * Y_HINGE, 0.12), M["green"])
+    b.box((BOOM_X - 0.08, 0, (LOWER_PIV.z + UPPER_PIV.z) / 2), (0.20, 1.10, 0.75), M["green"])   # lift mast
+    for s in (1, -1):                                                             # diagonal braces
+        b.bar((xb, s * 0.55, zb + 0.70), (xb, s * (Y_HINGE - 0.06), CF_TOP - 0.06), 0.07, M["green"])
+    # SMV emblem + lights on the rear face
+    b.cyl((xb - 0.09, 0, CF_TOP - 0.42), 0.30, 0.02, M["tail"], axis="X", segs=3, rot=Matrix.Rotation(math.pi / 2, 3, "Y") @ Matrix.Rotation(math.pi / 2, 3, "Z"), smooth=False)
+    b.cyl((xb - 0.10, 0, CF_TOP - 0.42), 0.21, 0.02, M["smv"], segs=3, rot=Matrix.Rotation(math.pi / 2, 3, "Y") @ Matrix.Rotation(math.pi / 2, 3, "Z"), smooth=False)
+    for s in (1, -1):
+        b.box((xb - 0.09, s * 1.15, zb + 0.70), (0.03, 0.18, 0.10), M["tail"])
+        b.box((xb - 0.09, s * 1.15, zb + 0.84), (0.03, 0.14, 0.06), M["amber"])
+    b.box((xb, 0.75, CF_TOP + 0.12), (0.30, 0.45, 0.22), M["black"])               # control box
+    # plumbing: spray pipe, section valves, hoses
+    b.tube((xb - 0.12, Y_HINGE, zb - 0.02), (xb - 0.12, -Y_HINGE, zb - 0.02), 0.022, M["steel"])
+    b.tube((xb + 0.05, 1.2, CF_TOP + 0.05), (xb + 0.05, -1.2, CF_TOP + 0.05), 0.03, M["hose"])
+    for k in range(int(Y_HINGE / S["nozzle_spacing_m"] - 0.5) + 1):                # centre-section nozzles
         for sg in (1, -1):
             y = sg * (k + 0.5) * S["nozzle_spacing_m"]
-            b.box((BOOM_X - 0.40, y, BOOM_CHORD_Z - 0.05), (0.04, 0.035, 0.07), M["black"])
-            b.box((BOOM_X - 0.40, y, BOOM_CHORD_Z - 0.09), (0.02, 0.02, 0.025), M["orange"])
+            b.box((xb - 0.12, y, zb - 0.07), (0.05, 0.04, 0.08), M["black"])
+            b.box((xb - 0.12, y, zb - 0.12), (0.025, 0.025, 0.03), M["orange"])
 part("boom_center_frame", center, center_frame, bevel=0.01)
-o = part("SVC_boom_strainer", center, lambda b: b.cyl((BOOM_X + 0.05, -0.30, BOOM_CHORD_Z + 0.30), 0.06, 0.22, M["white"]).cyl((BOOM_X + 0.05, -0.30, BOOM_CHORD_Z + 0.44), 0.07, 0.04, M["orange"]), smooth=True)
+o = part("SVC_boom_strainer", center, lambda b: b.cyl((BOOM_X + 0.05, -0.30, BOOM_CHORD_Z + 0.30), 0.06, 0.22, M["white"]).cyl((BOOM_X + 0.05, -0.30, BOOM_CHORD_Z + 0.44), 0.07, 0.04, M["orange"]))
 tag(o, "service_point", "sp_boom_strainer", "Boom strainer (80 mesh)")
-part("boom_center_lights", center, lambda b: b.box((BOOM_X - 0.48, 0.7, BOOM_CHORD_Z + 0.7), (0.03, 0.16, 0.10), M["red"]).box((BOOM_X - 0.48, -0.7, BOOM_CHORD_Z + 0.7), (0.03, 0.16, 0.10), M["red"]))
 
 NOZ_SP = S["nozzle_spacing_m"]
 
-def truss(b, side, y0, y1, h0, h1, depth0=0.50, depth1=0.32):
-    """Triangular boom truss from y0 to y1 (absolute |y|) on one side, with ExactApply nozzle bodies."""
+def truss(b, side, y0, y1, h0, h1, d0=0.48, d1=0.30, chord=0.07):
+    """Four-chord green steel boom truss from |y| = y0 to y1 with ExactApply nozzle bodies."""
     def P(y, dx, dz):
         return Vector((BOOM_X + dx, side * y, BOOM_CHORD_Z + dz))
     L = y1 - y0
-    n = max(2, int(L / 0.9))
+    n = max(2, int(L / 0.85))
     def at(t):
-        y = y0 + t * L
-        return y, h0 + (h1 - h0) * t, depth0 + (depth1 - depth0) * t
+        return y0 + t * L, h0 + (h1 - h0) * t, d0 + (d1 - d0) * t
+    g = M["green"]
     ya, ha, da = at(0); yb, hb, db = at(1)
-    m = M["boom"]
-    b.tube(P(ya, -0.0, 0), P(yb, -0.0, 0), 0.032, m)            # front bottom chord
-    b.tube(P(ya, -da, 0), P(yb, -db, 0), 0.032, m)              # rear bottom chord
-    b.tube(P(ya, -da / 2, ha), P(yb, -db / 2, hb), 0.030, m)    # top chord
+    # chords: bottom front/rear, top front/rear (top narrower -> trapezoid section)
+    for (dxa, dza), (dxb, dzb) in (((0, 0), (0, 0)), ((-da, 0), (-db, 0)),
+                                   ((-da * 0.2, ha), (-db * 0.2, hb)), ((-da * 0.8, ha), (-db * 0.8, hb))):
+        b.bar(P(ya, dxa, dza), P(yb, dxb, dzb), chord * (1 - 0.3 * (y0 / Y_END)), g)
     for i in range(n + 1):
         y, h, d = at(i / n)
-        b.tube(P(y, 0, 0), P(y, -d / 2, h), 0.018, m)
-        b.tube(P(y, -d, 0), P(y, -d / 2, h), 0.018, m)
-        b.tube(P(y, 0, 0), P(y, -d, 0), 0.016, m)
+        b.bar(P(y, 0, 0), P(y, -d * 0.2, h), 0.04, g)               # front vertical
+        b.bar(P(y, -d, 0), P(y, -d * 0.8, h), 0.04, g)              # rear vertical
+        b.bar(P(y, 0, 0), P(y, -d, 0), 0.035, g)                    # bottom cross
+        b.bar(P(y, -d * 0.2, h), P(y, -d * 0.8, h), 0.035, g)       # top cross
         if i < n:
             y2, h2, d2 = at((i + 1) / n)
-            b.tube(P(y, 0, 0), P(y2, -d2 / 2, h2), 0.014, m)
-            b.tube(P(y, -d, 0), P(y2, -d2 / 2, h2), 0.014, m)
-    # spray pipe + nozzles behind the rear chord
-    b.tube(P(ya, -da - 0.06, -0.02), P(yb, -db - 0.06, -0.02), 0.016, M["steel"])
-    k0 = math.ceil(y0 / NOZ_SP - 0.5)
-    k = k0
+            if i % 2 == 0:
+                b.bar(P(y, 0, 0), P(y2, -d2 * 0.2, h2), 0.03, g)
+                b.bar(P(y, -d, 0), P(y2, -d2 * 0.8, h2), 0.03, g)
+            else:
+                b.bar(P(y, -d * 0.2, h), P(y2, 0, 0), 0.03, g)
+                b.bar(P(y, -d * 0.8, h), P(y2, -d2, 0), 0.03, g)
+    # plumbing: stainless spray pipe behind the rear chord + black hose bundle on top
+    b.tube(P(ya, -da - 0.07, -0.02), P(yb, -db - 0.07, -0.02), 0.016, M["steel"])
+    b.tube(P(ya, -da * 0.5, ha + 0.05), P(yb, -db * 0.5, hb + 0.05), 0.022, M["hose"])
+    k = math.ceil(y0 / NOZ_SP - 0.5)
     while (k + 0.5) * NOZ_SP < y1:
         y = (k + 0.5) * NOZ_SP
-        t = (y - y0) / L
-        d = depth0 + (depth1 - depth0) * t
-        b.box(P(y, -d - 0.06, -0.06), (0.04, 0.035, 0.07), M["black"])
-        b.box(P(y, -d - 0.06, -0.10), (0.02, 0.02, 0.025), M["orange"])
+        d = d0 + (d1 - d0) * (y - y0) / L
+        b.box(P(y, -d - 0.07, -0.07), (0.05, 0.04, 0.08), M["black"])      # ExactApply body
+        b.box(P(y, -d - 0.07, -0.12), (0.025, 0.025, 0.03), M["orange"])   # tip
         k += 1
     return b
 
+OUTER_DX = -0.30          # outer-fold hinge sits behind the boom plane, so the folded wing nests outboard
 for side, sfx in ((1, "L"), (-1, "R")):
     hinge = Vector((BOOM_X, side * Y_HINGE, BOOM_CHORD_Z + 0.35))
     tilt = empty(f"PIV_tilt_{sfx}", hinge, center)
     fold = empty(f"PIV_fold_{sfx}", hinge, tilt)
-    part(f"boom_inner_{sfx}", fold, lambda b, s=side: truss(b, s, Y_HINGE, Y_OUTER, 0.85, 0.62).box((BOOM_X - 0.25, s * (Y_HINGE + 0.08), BOOM_CHORD_Z + 0.4), (0.5, 0.16, 0.8), M["green"]))
-    outer = empty(f"PIV_outer_{sfx}", (BOOM_X - 0.80, side * Y_OUTER, BOOM_CHORD_Z + 0.3), fold)
-    part(f"boom_outer_{sfx}", outer, lambda b, s=side: truss(b, s, Y_OUTER, Y_TIP, 0.60, 0.42, 0.32, 0.26).tube((BOOM_X - 0.80, s * Y_OUTER, BOOM_CHORD_Z), (BOOM_X - 0.80, s * Y_OUTER, BOOM_CHORD_Z + 0.6), 0.03, M["dsteel"]))
+    def inner_fn(b, s=side):
+        truss(b, s, Y_HINGE, Y_OUTER, 0.95, 0.62, 0.50, 0.36)
+        b.box((BOOM_X - 0.25, s * (Y_HINGE + 0.10), BOOM_CHORD_Z + 0.45), (0.55, 0.20, 0.95), M["green"])   # fold knuckle
+        b.cyl((BOOM_X + 0.10, s * (Y_HINGE + 0.6), BOOM_CHORD_Z + 0.75), 0.06, 1.0, M["steel"], axis="Y")    # fold cylinder rod
+    part(f"boom_inner_{sfx}", fold, inner_fn)
+    outer = empty(f"PIV_outer_{sfx}", (BOOM_X + OUTER_DX, side * Y_OUTER, BOOM_CHORD_Z + 0.3), fold)
+    def outer_fn(b, s=side):
+        truss(b, s, Y_OUTER, Y_TIP, 0.60, 0.42, 0.34, 0.26, chord=0.06)
+        b.box((BOOM_X + OUTER_DX / 2, s * (Y_OUTER + 0.08), BOOM_CHORD_Z + 0.30), (0.40, 0.16, 0.62), M["green"])
+    part(f"boom_outer_{sfx}", outer, outer_fn)
     tip = empty(f"PIV_tip_{sfx}", (BOOM_X - 0.13, side * Y_TIP, BOOM_CHORD_Z + 0.2), outer)
     def tip_fn(b, s=side):
-        truss(b, s, Y_TIP, Y_END, 0.40, 0.22, 0.26, 0.18)
-        b.cyl((BOOM_X - 0.13, s * Y_TIP, BOOM_CHORD_Z + 0.25), 0.05, 0.12, M["yellow"])   # breakaway spring can
-        b.box((BOOM_X - 0.08, s * (Y_END - 0.05), BOOM_CHORD_Z - 0.20), (0.06, 0.06, 0.5), M["yellow"])  # end guard
+        truss(b, s, Y_TIP, Y_END, 0.40, 0.24, 0.26, 0.18, chord=0.05)
+        b.cyl((BOOM_X - 0.13, s * Y_TIP, BOOM_CHORD_Z + 0.25), 0.05, 0.14, M["yellow"])                     # breakaway spring can
+        b.bar((BOOM_X - 0.05, s * (Y_END - 0.05), BOOM_CHORD_Z - 0.35), (BOOM_X - 0.05, s * (Y_END - 0.05), BOOM_CHORD_Z + 0.25), 0.06, M["yellow"])  # end guard
     part(f"boom_tip_{sfx}", tip, tip_fn)
 
 # ============================================================================= DRIVERS (Blender-side posing)
@@ -751,8 +949,39 @@ for o in COLL.objects:
         o["label"] = o.name.replace("_", " ")
 
 # ============================================================================= environment (render only)
-bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
-g = bpy.context.active_object; g.name = "ENV_ground"; g.data.materials.append(M["ground"])
+def grass_material():
+    m = bpy.data.materials.new("Grass_Field")
+    try:
+        m.use_nodes = True
+    except Exception:
+        pass
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 0.6
+    noise.inputs["Detail"].default_value = 10
+    noise.inputs["Roughness"].default_value = 0.65
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    e = ramp.color_ramp.elements
+    e[0].position, e[0].color = 0.35, (*srgb("3F5A22"), 1)
+    e[1].position, e[1].color = 0.65, (*srgb("6E8238"), 1)
+    e.new(0.80).color = (*srgb("7D7048"), 1)
+    fine = nt.nodes.new("ShaderNodeTexNoise")
+    fine.inputs["Scale"].default_value = 120
+    bump = nt.nodes.new("ShaderNodeBump"); bump.inputs["Strength"].default_value = 0.35
+    nt.links.new(tc.outputs["Object"], noise.inputs["Vector"])
+    nt.links.new(tc.outputs["Object"], fine.inputs["Vector"])
+    nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    nt.links.new(fine.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    bsdf.inputs["Roughness"].default_value = 0.95
+    m.diffuse_color = (*srgb("5E7A36"), 1)
+    return m
+
+bpy.ops.mesh.primitive_plane_add(size=400, location=(0, 0, 0))
+g = bpy.context.active_object; g.name = "ENV_ground"; g.data.materials.append(grass_material())
 for c in g.users_collection: c.objects.unlink(g)
 ENV.objects.link(g)
 
@@ -761,7 +990,6 @@ bpy.context.view_layer.update()
 blend_path = os.path.join(OUT, "john_deere_612r.blend")
 bpy.ops.wm.save_as_mainfile(filepath=blend_path)
 
-# glTF export: only the machine collection; custom props -> extras (kind / ref_id / label)
 for o in bpy.data.objects:
     o.select_set(o.name in COLL.objects)
 # Drivers are not exported. The viewer drives the PIV_* nodes from spec/612r_spec.json.
@@ -780,22 +1008,48 @@ bpy.ops.export_scene.gltf(filepath=glb_path, export_format="GLB", use_selection=
 print("SAVED", blend_path)
 print("EXPORTED", glb_path, os.path.getsize(glb_path) // 1024, "KB")
 
-# ============================================================================= optional preview renders
+# ============================================================================= photoreal preview renders
 if DO_RENDER:
     bpy.ops.wm.open_mainfile(filepath=blend_path)
     scene = bpy.context.scene
     root = bpy.data.objects["SPRAYER_612R"]
     scene.render.engine = "CYCLES"
-    scene.cycles.samples = 24
+    scene.cycles.samples = int(os.environ.get("SAMPLES", 96))
     scene.cycles.use_denoising = True
-    scene.render.resolution_x, scene.render.resolution_y = 1280, 720
-    world = bpy.data.worlds.new("Sky"); scene.world = world; world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs[0].default_value = (0.62, 0.74, 0.88, 1)
-    world.node_tree.nodes["Background"].inputs[1].default_value = 0.9
+    scene.render.resolution_x, scene.render.resolution_y = 1600, 900
+    try:
+        scene.view_settings.view_transform = "AgX"
+        scene.view_settings.look = "AgX - Medium High Contrast"
+    except Exception:
+        pass
+    # physically based sky + matching sun
+    world = bpy.data.worlds.new("Sky"); scene.world = world
+    try:
+        world.use_nodes = True
+    except Exception:
+        pass
+    nt = world.node_tree
+    sky = nt.nodes.new("ShaderNodeTexSky")
+    for t in ("MULTIPLE_SCATTERING", "NISHITA", "HOSEK_WILKIE"):
+        try:
+            sky.sky_type = t
+            break
+        except Exception:
+            continue
+    SUN_EL, SUN_AZ = math.radians(38), math.radians(215)
+    for attr, val in (("sun_elevation", SUN_EL), ("sun_rotation", SUN_AZ), ("sun_intensity", 0.6)):
+        if hasattr(sky, attr):
+            setattr(sky, attr, val)
+    nt.links.new(sky.outputs["Color"], nt.nodes["Background"].inputs["Color"])
+    nt.nodes["Background"].inputs["Strength"].default_value = 0.22
+    scene.view_settings.exposure = -0.35
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
-    sun.data.energy = 4.0; sun.rotation_euler = (math.radians(50), 0, math.radians(35))
+    sun.data.energy = 3.2
+    sun.data.angle = math.radians(0.6)
+    sun.rotation_euler = (math.pi / 2 - SUN_EL, 0, SUN_AZ + math.pi / 2)
     scene.collection.objects.link(sun)
     cam = bpy.data.objects.new("Cam", bpy.data.cameras.new("Cam")); scene.collection.objects.link(cam)
+    cam.data.clip_end = 1000
     scene.camera = cam
 
     def look(pos, tgt, lens=35):
@@ -804,20 +1058,26 @@ if DO_RENDER:
         cam.data.lens = lens
 
     def pose(**kw):
+        for j in SPEC["joints"]:
+            root[j["id"]] = float(j["default"])
         for k, v in kw.items():
-            root[k] = v
+            root[k] = float(v)
         root.update_tag(); bpy.context.view_layer.update()
 
     docs = os.path.join(ROOT, "docs")
     os.makedirs(docs, exist_ok=True)
+    TRANSPORT = dict(boom_height=2.2, outer_L=178, outer_R=178, fold_L=90, fold_R=90, ladder=0)
     shots = [
-        ("render_field.png",     dict(), ((-16, 26, 11), (-2, 3, 1.0), 30)),
-        ("render_transport.png", dict(boom_height=2.2, outer_L=178, outer_R=178, fold_L=90, fold_R=90, ladder=80), ((13, 13, 7), (1.5, 0, 2.0), 35)),
-        ("render_service.png",   dict(hood=65, ladder=0, cab_door=75, eductor=85, tread=4.06, steer=25, boom_height=1.6, tilt_L=12), ((7, 9, 4.5), (1.5, 0.5, 1.8), 30)),
+        ("render_transport.png", TRANSPORT, ((12.5, 9.5, 3.4), (2.6, 0.2, 2.0), 30)),
+        ("render_side.png",      TRANSPORT, ((2.6, 20, 2.2), (2.6, 0, 2.0), 40)),
+        ("render_rear.png",      TRANSPORT, ((-11, -4.5, 2.6), (0, 0, 2.0), 35)),
+        ("render_field.png",     dict(boom_height=0.76), ((-13, 21, 6.5), (-1, 4, 1.2), 30)),
+        ("render_service.png",   dict(hood=60, ladder=0, cab_door=75, eductor=85, tread=4.06, steer=25, boom_height=1.6), ((10.5, 7.5, 3.8), (3.8, 0.4, 2.0), 30)),
     ]
+    only = os.environ.get("ONLY")
     for fn, p, (pos, tgt, lens) in shots:
-        for j in SPEC["joints"]:
-            root[j["id"]] = float(j["default"])
+        if only and only not in fn:
+            continue
         pose(**p)
         look(pos, tgt, lens)
         scene.render.filepath = os.path.join(docs, fn)
