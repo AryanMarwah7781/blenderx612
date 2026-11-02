@@ -347,11 +347,11 @@ function renderList(tab) {
     h(aud === "operator" ? "Operator" : "Mechanic / service");
     for (const p of SPEC.procedures.filter(p => p.audience === aud)) add(`<span>${p.title}</span><small>${p.steps.length} steps</small>`, { onclick: () => runProcedure(p.id) });
   }
-  if (tab === "controls") for (const loc of ["hydro_handle", "commandarm", "cab", "exterior"]) {
+  if (tab === "controls") for (const loc of ["hydro_handle", "commandarm", "display_strip", "cab", "exterior"]) {
     h(loc.replace("_", " "));
     for (const c of SPEC.controls.filter(c => c.location === loc)) {
       const b = add(`<span>${c.label}</span>${c.verified ? "" : '<span class="tag unv" title="Placement not yet checked against the OM">verify</span>'}`);
-      b.onpointerdown = () => { highlight([c.mesh]); goCamera(loc === "exterior" ? "left_side" : "commandarm"); pressControl(c.id, true); };
+      b.onpointerdown = () => { highlight([c.mesh]); goCamera(loc === "exterior" ? "left_side" : loc === "display_strip" ? "display" : "commandarm"); pressControl(c.id, true); };
       b.onpointerup = b.onpointerleave = () => pressControl(c.id, false);
     }
   }
@@ -412,7 +412,7 @@ function pick(ev) {
 let downPick = null;
 canvas.addEventListener("pointerdown", (ev) => {
   const p = pick(ev); downPick = p;
-  if (p?.control) { orbit.enabled = false; highlight([p.control.mesh]); info(p.control.label, `${p.control.location.replace("_", " ")} · ${p.control.kind}${p.control.verified ? "" : " · position not yet verified against the OM"}`, p.control.id); pressControl(p.control.id, true); }
+  if (p?.control) { orbit.enabled = false; highlight([p.control.mesh]); info(p.control.label, `${p.control.location.replace("_", " ")} · ${p.control.kind}${p.control.verified ? "" : " · not yet verified against the OM"}${p.control.evidence ? " · evidence: " + p.control.evidence : ""}`, p.control.id); pressControl(p.control.id, true); }
   else if (p?.service) showService(p.service);
 });
 addEventListener("pointerup", () => { if (downPick?.control) pressControl(downPick.control.id, false); downPick = null; orbit.enabled = true; });

@@ -12,221 +12,1416 @@
     "https://www.deere.ca/en/sprayers/400-600-series/612r-sprayer/",
     "https://www.sloans.com/catalog/new-john-deere-ag/sprayers-and-application-equipment/sprayer-chassis/612r-sprayer"
   ],
-
   "specs": {
-    "wheelbase_m":            {"value": 4.30,   "src": "OFFICIAL", "note": "430 cm / 169.3 in"},
-    "tread_min_m":            {"value": 3.05,   "src": "OFFICIAL", "note": "120 in"},
-    "tread_max_m":            {"value": 4.06,   "src": "OFFICIAL", "note": "160 in, hydraulic tread adjust"},
-    "crop_clearance_m":       {"value": 1.47,   "src": "OFFICIAL", "note": "58 in with standard tires"},
-    "turning_radius_m":       {"value": 9.2,    "src": "OFFICIAL", "note": "30.2 ft"},
-    "tire_standard":          {"value": "380/105 R50", "src": "OFFICIAL"},
-    "tire_diameter_m":        {"value": 2.068,  "src": "DERIVED",  "note": "50 in rim + 2 x (380 mm x 1.05)"},
-    "tire_width_m":           {"value": 0.38,   "src": "DERIVED"},
-    "engine":                 {"value": "John Deere 9.0 L, 6-cylinder, Final Tier 4", "src": "OFFICIAL"},
-    "rated_power_kw":         {"value": 265,    "src": "OFFICIAL", "note": "355 hp rated, 388 hp max"},
-    "drivetrain":             {"value": "Hydrostatic full-time 4WD (CommandDrive), electrohydraulic shifting", "src": "OFFICIAL"},
-    "max_spray_speed_kph":    {"value": 40,     "src": "OFFICIAL", "note": "25 mph"},
-    "max_transport_speed_kph":{"value": 56.8,   "src": "OFFICIAL", "note": "35 mph"},
-    "auto_idle_rpm":          {"value": 900,    "src": "OFFICIAL", "note": "Auto Idle in park"},
-    "solution_tank_l":        {"value": 4542.5, "src": "OFFICIAL", "note": "1,200 gal stainless"},
-    "rinse_tank_l":           {"value": 646,    "src": "OFFICIAL", "note": "170 gal"},
-    "fuel_tank_l":            {"value": 565,    "src": "OFFICIAL"},
-    "def_tank_l":             {"value": 29.5,   "src": "OFFICIAL"},
-    "hydraulic_reservoir_l":  {"value": 98.4,   "src": "OFFICIAL"},
-    "eductor_l":              {"value": 32,     "src": "OFFICIAL", "note": "stainless chemical eductor"},
-    "quick_fill_in":          {"value": 3,      "src": "OFFICIAL"},
-    "strainers_mesh":         {"value": {"suction": 20, "pressure": 50, "boom": 80}, "src": "OFFICIAL"},
-    "boom_length_m":          {"value": 36.58,  "src": "OFFICIAL", "note": "120 ft steel boom modelled; 90/100/132 ft options exist"},
-    "boom_sections":          {"value": 11,     "src": "OFFICIAL", "note": "for 120 ft"},
-    "breakaway_width_m":      {"value": 3.3,    "src": "OFFICIAL", "note": "stainless steel boom"},
-    "boom_height_min_m":      {"value": 0.50,   "src": "OFFICIAL", "note": "ground height adjustment 50-245 cm"},
-    "boom_height_max_m":      {"value": 2.45,   "src": "OFFICIAL"},
-    "nozzle_spacing_m":       {"value": 0.381,  "src": "OFFICIAL", "note": "15 in (20 in optional)"},
-    "suspension":             {"value": "Dual-strut independent wheel, air-ride", "src": "OFFICIAL"},
-    "parking_brake":          {"value": "Spring-engaged, hydraulically released wet disk pack", "src": "OFFICIAL"},
-    "weight_empty_kg":        {"value": 16962,  "src": "OFFICIAL", "note": "120 ft steel boom; depends on options"},
-    "overall_height_m":       {"value": 4.0,    "src": "ESTIMATE"},
-    "transport_width_m":      {"value": 3.9,    "src": "ESTIMATE"}
+    "wheelbase_m": {
+      "value": 4.3,
+      "src": "OFFICIAL",
+      "note": "430 cm / 169.3 in"
+    },
+    "tread_min_m": {
+      "value": 3.05,
+      "src": "OFFICIAL",
+      "note": "120 in"
+    },
+    "tread_max_m": {
+      "value": 4.06,
+      "src": "OFFICIAL",
+      "note": "160 in, hydraulic tread adjust"
+    },
+    "crop_clearance_m": {
+      "value": 1.47,
+      "src": "OFFICIAL",
+      "note": "58 in with standard tires"
+    },
+    "turning_radius_m": {
+      "value": 9.2,
+      "src": "OFFICIAL",
+      "note": "30.2 ft"
+    },
+    "tire_standard": {
+      "value": "380/105 R50",
+      "src": "OFFICIAL"
+    },
+    "tire_diameter_m": {
+      "value": 2.068,
+      "src": "DERIVED",
+      "note": "50 in rim + 2 x (380 mm x 1.05)"
+    },
+    "tire_width_m": {
+      "value": 0.38,
+      "src": "DERIVED"
+    },
+    "engine": {
+      "value": "John Deere 9.0 L, 6-cylinder, Final Tier 4",
+      "src": "OFFICIAL"
+    },
+    "rated_power_kw": {
+      "value": 265,
+      "src": "OFFICIAL",
+      "note": "355 hp rated, 388 hp max"
+    },
+    "drivetrain": {
+      "value": "Hydrostatic full-time 4WD (CommandDrive), electrohydraulic shifting",
+      "src": "OFFICIAL"
+    },
+    "max_spray_speed_kph": {
+      "value": 40,
+      "src": "OFFICIAL",
+      "note": "25 mph"
+    },
+    "max_transport_speed_kph": {
+      "value": 56.8,
+      "src": "OFFICIAL",
+      "note": "35 mph"
+    },
+    "auto_idle_rpm": {
+      "value": 900,
+      "src": "OFFICIAL",
+      "note": "Auto Idle in park"
+    },
+    "solution_tank_l": {
+      "value": 4542.5,
+      "src": "OFFICIAL",
+      "note": "1,200 gal stainless"
+    },
+    "rinse_tank_l": {
+      "value": 646,
+      "src": "OFFICIAL",
+      "note": "170 gal"
+    },
+    "fuel_tank_l": {
+      "value": 565,
+      "src": "OFFICIAL"
+    },
+    "def_tank_l": {
+      "value": 29.5,
+      "src": "OFFICIAL"
+    },
+    "hydraulic_reservoir_l": {
+      "value": 98.4,
+      "src": "OFFICIAL"
+    },
+    "eductor_l": {
+      "value": 32,
+      "src": "OFFICIAL",
+      "note": "stainless chemical eductor"
+    },
+    "quick_fill_in": {
+      "value": 3,
+      "src": "OFFICIAL"
+    },
+    "strainers_mesh": {
+      "value": {
+        "suction": 20,
+        "pressure": 50,
+        "boom": 80
+      },
+      "src": "OFFICIAL"
+    },
+    "boom_length_m": {
+      "value": 36.58,
+      "src": "OFFICIAL",
+      "note": "120 ft steel boom modelled; 90/100/132 ft options exist"
+    },
+    "boom_sections": {
+      "value": 11,
+      "src": "OFFICIAL",
+      "note": "for 120 ft"
+    },
+    "breakaway_width_m": {
+      "value": 3.3,
+      "src": "OFFICIAL",
+      "note": "stainless steel boom"
+    },
+    "boom_height_min_m": {
+      "value": 0.5,
+      "src": "OFFICIAL",
+      "note": "ground height adjustment 50-245 cm"
+    },
+    "boom_height_max_m": {
+      "value": 2.45,
+      "src": "OFFICIAL"
+    },
+    "nozzle_spacing_m": {
+      "value": 0.381,
+      "src": "OFFICIAL",
+      "note": "15 in (20 in optional)"
+    },
+    "suspension": {
+      "value": "Dual-strut independent wheel, air-ride",
+      "src": "OFFICIAL"
+    },
+    "parking_brake": {
+      "value": "Spring-engaged, hydraulically released wet disk pack",
+      "src": "OFFICIAL"
+    },
+    "weight_empty_kg": {
+      "value": 16962,
+      "src": "OFFICIAL",
+      "note": "120 ft steel boom; depends on options"
+    },
+    "overall_height_m": {
+      "value": 4.0,
+      "src": "ESTIMATE"
+    },
+    "transport_width_m": {
+      "value": 3.9,
+      "src": "ESTIMATE"
+    }
   },
-
   "boom_layout_per_side_m": {
     "_note": "ESTIMATE split of an 18.29 m half-boom. Only the 3.3 m breakaway width is OFFICIAL.",
-    "center_half": 1.50,
-    "inner_wing": 9.40,
+    "center_half": 1.5,
+    "inner_wing": 9.4,
     "outer_wing": 4.08,
     "breakaway": 3.31
   },
-
-  "commandarm_note": "Physical CommandARM layout (light-gray armrest, sloped keypad with 4x4 grid, two orange keys, rotary dial, orange/black hydro handle with yellow triangle + key cluster, display on a front post) follows dealer photos of a production 612R. WHICH key performs WHICH function is a placeholder until confirmed from the operator's manual, so every control stays verified:false.",
-
+  "commandarm_note": "CommandARM v4 is traced from close-up photos of a real 612R CommandARM: top-down console, display key strip, and the hydro handle from several angles. Key positions follow the photo. A control's 'evidence' field records what the printed key legend shows. Every control stays verified:false until it is checked against the operator's manual.",
   "joints": [
-    {"id": "steer",            "label": "Front steer angle (outer wheel)", "type": "rotate", "unit": "deg", "min": -28, "max": 28, "default": 0, "rate": 20,
-     "nodes": {"PIV_steer_FL": "ackermann_L", "PIV_steer_FR": "ackermann_R"}, "src": "DERIVED",
-     "note": "asin(wheelbase / turning radius) = 27.9 deg. The inner wheel follows Ackermann geometry."},
-    {"id": "tread",            "label": "Tread width", "type": "translate", "unit": "m", "min": 3.05, "max": 4.06, "default": 3.05, "rate": 0.05,
-     "nodes": {"PIV_tread_FL": "+half", "PIV_tread_RL": "+half", "PIV_tread_FR": "-half", "PIV_tread_RR": "-half"}, "src": "OFFICIAL",
-     "note": "Rate is an ESTIMATE. Hydraulic tread adjust only moves while the machine is rolling (see interlocks)."},
-    {"id": "suspension",       "label": "Air-ride strut travel", "type": "translate", "unit": "m", "min": -0.10, "max": 0.10, "default": 0, "rate": 0.5,
-     "nodes": {"PIV_susp_FL": "z", "PIV_susp_FR": "z", "PIV_susp_RL": "z", "PIV_susp_RR": "z"}, "src": "ESTIMATE"},
-    {"id": "boom_height",      "label": "Boom nozzle height", "type": "linkage", "unit": "m", "min": 0.50, "max": 2.45, "default": 0.76, "rate": 0.45,
-     "nodes": {"PIV_lift_upper": "arm", "PIV_lift_lower": "arm", "PIV_boom_center": "level"}, "src": "OFFICIAL",
-     "linkage": {"arm_length": 1.4, "pivot_z": 2.4, "nozzle_drop": 0.925},
-     "note": "Parallel-link lift: height = pivot_z + L*sin(theta) - nozzle_drop. The centre frame counter-rotates to stay level."},
-    {"id": "tilt_L",           "label": "Left wing tilt",  "type": "rotate", "unit": "deg", "min": -8, "max": 18, "default": 0, "rate": 6, "nodes": {"PIV_tilt_L": "x+"}, "src": "ESTIMATE"},
-    {"id": "tilt_R",           "label": "Right wing tilt", "type": "rotate", "unit": "deg", "min": -8, "max": 18, "default": 0, "rate": 6, "nodes": {"PIV_tilt_R": "x-"}, "src": "ESTIMATE"},
-    {"id": "fold_L",           "label": "Left main fold",  "type": "rotate", "unit": "deg", "min": 0, "max": 90,  "default": 0, "rate": 9,  "nodes": {"PIV_fold_L": "z-"}, "src": "ESTIMATE"},
-    {"id": "fold_R",           "label": "Right main fold", "type": "rotate", "unit": "deg", "min": 0, "max": 90,  "default": 0, "rate": 9,  "nodes": {"PIV_fold_R": "z+"}, "src": "ESTIMATE"},
-    {"id": "outer_L",          "label": "Left outer fold", "type": "rotate", "unit": "deg", "min": 0, "max": 178, "default": 0, "rate": 18, "nodes": {"PIV_outer_L": "z+"}, "src": "ESTIMATE"},
-    {"id": "outer_R",          "label": "Right outer fold","type": "rotate", "unit": "deg", "min": 0, "max": 178, "default": 0, "rate": 18, "nodes": {"PIV_outer_R": "z-"}, "src": "ESTIMATE"},
-    {"id": "tip_L",            "label": "Left breakaway",  "type": "rotate", "unit": "deg", "min": -35, "max": 35, "default": 0, "rate": 90, "nodes": {"PIV_tip_L": "z+"}, "src": "ESTIMATE",
-     "spring_return": true, "note": "Spring breakaway swings both ways when it hits something, then springs back to 0."},
-    {"id": "tip_R",            "label": "Right breakaway", "type": "rotate", "unit": "deg", "min": -35, "max": 35, "default": 0, "rate": 90, "nodes": {"PIV_tip_R": "z-"}, "src": "ESTIMATE", "spring_return": true},
-    {"id": "ladder",           "label": "Hydraulic ladder", "type": "rotate", "unit": "deg", "min": 0, "max": 80, "default": 0, "rate": 30, "nodes": {"PIV_ladder": "y-"}, "src": "OFFICIAL",
-     "note": "Hydraulic raise/lower is OFFICIAL; travel angle is an ESTIMATE."},
-    {"id": "cab_door",         "label": "Cab door", "type": "rotate", "unit": "deg", "min": 0, "max": 80, "default": 0, "rate": 60, "nodes": {"PIV_cab_door": "z+"}, "src": "ESTIMATE"},
-    {"id": "hood",             "label": "Engine hood (front nose, tilts up)", "type": "rotate", "unit": "deg", "min": 0, "max": 65, "default": 0, "rate": 30, "nodes": {"PIV_hood": "y-"}, "src": "ESTIMATE"},
-    {"id": "eductor",          "label": "Chemical eductor", "type": "rotate", "unit": "deg", "min": 0, "max": 85, "default": 0, "rate": 40, "nodes": {"PIV_eductor": "x-", "PIV_eductor_level": "x+"}, "src": "ESTIMATE"},
-    {"id": "hydro_handle",     "label": "Hydro handle (MFWD lever)", "type": "rotate", "unit": "deg", "min": -12, "max": 25, "default": 0, "rate": 40, "nodes": {"PIV_hydro_handle": "y+"}, "src": "ESTIMATE",
-     "note": "Forward = forward travel. Lever angle maps to the commanded fraction of the selected range."},
-    {"id": "steering_wheel",   "label": "Steering wheel", "type": "rotate", "unit": "deg", "min": -540, "max": 540, "default": 0, "rate": 360, "nodes": {"PIV_steering_wheel": "z"}, "src": "ESTIMATE",
-     "note": "About 3 turns lock to lock (ESTIMATE). It drives the steer joint."}
+    {
+      "id": "steer",
+      "label": "Front steer angle (outer wheel)",
+      "type": "rotate",
+      "unit": "deg",
+      "min": -28,
+      "max": 28,
+      "default": 0,
+      "rate": 20,
+      "nodes": {
+        "PIV_steer_FL": "ackermann_L",
+        "PIV_steer_FR": "ackermann_R"
+      },
+      "src": "DERIVED",
+      "note": "asin(wheelbase / turning radius) = 27.9 deg. The inner wheel follows Ackermann geometry."
+    },
+    {
+      "id": "tread",
+      "label": "Tread width",
+      "type": "translate",
+      "unit": "m",
+      "min": 3.05,
+      "max": 4.06,
+      "default": 3.05,
+      "rate": 0.05,
+      "nodes": {
+        "PIV_tread_FL": "+half",
+        "PIV_tread_RL": "+half",
+        "PIV_tread_FR": "-half",
+        "PIV_tread_RR": "-half"
+      },
+      "src": "OFFICIAL",
+      "note": "Rate is an ESTIMATE. Hydraulic tread adjust only moves while the machine is rolling (see interlocks)."
+    },
+    {
+      "id": "suspension",
+      "label": "Air-ride strut travel",
+      "type": "translate",
+      "unit": "m",
+      "min": -0.1,
+      "max": 0.1,
+      "default": 0,
+      "rate": 0.5,
+      "nodes": {
+        "PIV_susp_FL": "z",
+        "PIV_susp_FR": "z",
+        "PIV_susp_RL": "z",
+        "PIV_susp_RR": "z"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "boom_height",
+      "label": "Boom nozzle height",
+      "type": "linkage",
+      "unit": "m",
+      "min": 0.5,
+      "max": 2.45,
+      "default": 0.76,
+      "rate": 0.45,
+      "nodes": {
+        "PIV_lift_upper": "arm",
+        "PIV_lift_lower": "arm",
+        "PIV_boom_center": "level"
+      },
+      "src": "OFFICIAL",
+      "linkage": {
+        "arm_length": 1.4,
+        "pivot_z": 2.4,
+        "nozzle_drop": 0.925
+      },
+      "note": "Parallel-link lift: height = pivot_z + L*sin(theta) - nozzle_drop. The centre frame counter-rotates to stay level."
+    },
+    {
+      "id": "tilt_L",
+      "label": "Left wing tilt",
+      "type": "rotate",
+      "unit": "deg",
+      "min": -8,
+      "max": 18,
+      "default": 0,
+      "rate": 6,
+      "nodes": {
+        "PIV_tilt_L": "x+"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "tilt_R",
+      "label": "Right wing tilt",
+      "type": "rotate",
+      "unit": "deg",
+      "min": -8,
+      "max": 18,
+      "default": 0,
+      "rate": 6,
+      "nodes": {
+        "PIV_tilt_R": "x-"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "fold_L",
+      "label": "Left main fold",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 90,
+      "default": 0,
+      "rate": 9,
+      "nodes": {
+        "PIV_fold_L": "z-"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "fold_R",
+      "label": "Right main fold",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 90,
+      "default": 0,
+      "rate": 9,
+      "nodes": {
+        "PIV_fold_R": "z+"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "outer_L",
+      "label": "Left outer fold",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 178,
+      "default": 0,
+      "rate": 18,
+      "nodes": {
+        "PIV_outer_L": "z+"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "outer_R",
+      "label": "Right outer fold",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 178,
+      "default": 0,
+      "rate": 18,
+      "nodes": {
+        "PIV_outer_R": "z-"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "tip_L",
+      "label": "Left breakaway",
+      "type": "rotate",
+      "unit": "deg",
+      "min": -35,
+      "max": 35,
+      "default": 0,
+      "rate": 90,
+      "nodes": {
+        "PIV_tip_L": "z+"
+      },
+      "src": "ESTIMATE",
+      "spring_return": true,
+      "note": "Spring breakaway swings both ways when it hits something, then springs back to 0."
+    },
+    {
+      "id": "tip_R",
+      "label": "Right breakaway",
+      "type": "rotate",
+      "unit": "deg",
+      "min": -35,
+      "max": 35,
+      "default": 0,
+      "rate": 90,
+      "nodes": {
+        "PIV_tip_R": "z-"
+      },
+      "src": "ESTIMATE",
+      "spring_return": true
+    },
+    {
+      "id": "ladder",
+      "label": "Hydraulic ladder",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 80,
+      "default": 0,
+      "rate": 30,
+      "nodes": {
+        "PIV_ladder": "y-"
+      },
+      "src": "OFFICIAL",
+      "note": "Hydraulic raise/lower is OFFICIAL; travel angle is an ESTIMATE."
+    },
+    {
+      "id": "cab_door",
+      "label": "Cab door",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 80,
+      "default": 0,
+      "rate": 60,
+      "nodes": {
+        "PIV_cab_door": "z+"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "hood",
+      "label": "Engine hood (front nose, tilts up)",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 65,
+      "default": 0,
+      "rate": 30,
+      "nodes": {
+        "PIV_hood": "y-"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "eductor",
+      "label": "Chemical eductor",
+      "type": "rotate",
+      "unit": "deg",
+      "min": 0,
+      "max": 85,
+      "default": 0,
+      "rate": 40,
+      "nodes": {
+        "PIV_eductor": "x-",
+        "PIV_eductor_level": "x+"
+      },
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "hydro_handle",
+      "label": "Hydro handle (MFWD lever)",
+      "type": "rotate",
+      "unit": "deg",
+      "min": -12,
+      "max": 25,
+      "default": 0,
+      "rate": 40,
+      "nodes": {
+        "PIV_hydro_handle": "y+"
+      },
+      "src": "ESTIMATE",
+      "note": "Forward = forward travel. Lever angle maps to the commanded fraction of the selected range."
+    },
+    {
+      "id": "steering_wheel",
+      "label": "Steering wheel",
+      "type": "rotate",
+      "unit": "deg",
+      "min": -540,
+      "max": 540,
+      "default": 0,
+      "rate": 360,
+      "nodes": {
+        "PIV_steering_wheel": "z"
+      },
+      "src": "ESTIMATE",
+      "note": "About 3 turns lock to lock (ESTIMATE). It drives the steer joint."
+    }
   ],
-
   "controls": [
-    {"id": "hh_lever",          "label": "Hydro handle",                      "location": "commandarm", "mesh": "CTL_hydro_handle",   "kind": "lever",     "joint": "hydro_handle", "verified": false},
-    {"id": "hh_master_spray",   "label": "Master spray ON/OFF",              "location": "hydro_handle", "mesh": "BTN_master_spray", "kind": "toggle", "state": "spray_on", "verified": false},
-    {"id": "hh_boom_raise",     "label": "Boom raise (centre)",              "location": "hydro_handle", "mesh": "BTN_boom_raise",   "kind": "momentary", "joint": "boom_height", "dir": 1,  "verified": false},
-    {"id": "hh_boom_lower",     "label": "Boom lower (centre)",              "location": "hydro_handle", "mesh": "BTN_boom_lower",   "kind": "momentary", "joint": "boom_height", "dir": -1, "verified": false},
-    {"id": "hh_tilt_L_up",      "label": "Left wing tilt up",                "location": "hydro_handle", "mesh": "BTN_tilt_L_up",    "kind": "momentary", "joint": "tilt_L", "dir": 1,  "verified": false},
-    {"id": "hh_tilt_L_down",    "label": "Left wing tilt down",              "location": "hydro_handle", "mesh": "BTN_tilt_L_down",  "kind": "momentary", "joint": "tilt_L", "dir": -1, "verified": false},
-    {"id": "hh_tilt_R_up",      "label": "Right wing tilt up",               "location": "hydro_handle", "mesh": "BTN_tilt_R_up",    "kind": "momentary", "joint": "tilt_R", "dir": 1,  "verified": false},
-    {"id": "hh_tilt_R_down",    "label": "Right wing tilt down",             "location": "hydro_handle", "mesh": "BTN_tilt_R_down",  "kind": "momentary", "joint": "tilt_R", "dir": -1, "verified": false},
-    {"id": "hh_resume",         "label": "Boom height resume (BoomTrac)",    "location": "hydro_handle", "mesh": "BTN_resume",       "kind": "toggle", "state": "boomtrac", "verified": false},
-    {"id": "hh_range_up",       "label": "Speed range up",                   "location": "hydro_handle", "mesh": "BTN_range_up",     "kind": "step", "state": "range", "dir": 1,  "verified": false},
-    {"id": "hh_range_down",     "label": "Speed range down",                 "location": "hydro_handle", "mesh": "BTN_range_down",   "kind": "step", "state": "range", "dir": -1, "verified": false},
-
-    {"id": "ca_throttle",       "label": "Engine throttle",                  "location": "commandarm", "mesh": "CTL_throttle",       "kind": "step", "state": "throttle", "dir": 1, "verified": false},
-    {"id": "ca_park",           "label": "Park brake / Park position",       "location": "commandarm", "mesh": "BTN_park",           "kind": "toggle", "state": "park", "verified": false},
-    {"id": "ca_transport",      "label": "Field / Road (transport) mode",    "location": "commandarm", "mesh": "BTN_transport",      "kind": "toggle", "state": "road_mode", "verified": false},
-    {"id": "ca_fold_L_out",     "label": "Left main fold OUT",               "location": "commandarm", "mesh": "SW_fold_L_out",      "kind": "momentary", "joint": "fold_L",  "dir": -1, "verified": false},
-    {"id": "ca_fold_L_in",      "label": "Left main fold IN",                "location": "commandarm", "mesh": "SW_fold_L_in",       "kind": "momentary", "joint": "fold_L",  "dir": 1,  "verified": false},
-    {"id": "ca_fold_R_out",     "label": "Right main fold OUT",              "location": "commandarm", "mesh": "SW_fold_R_out",      "kind": "momentary", "joint": "fold_R",  "dir": -1, "verified": false},
-    {"id": "ca_fold_R_in",      "label": "Right main fold IN",               "location": "commandarm", "mesh": "SW_fold_R_in",       "kind": "momentary", "joint": "fold_R",  "dir": 1,  "verified": false},
-    {"id": "ca_outer_L_out",    "label": "Left outer fold OUT",              "location": "commandarm", "mesh": "SW_outer_L_out",     "kind": "momentary", "joint": "outer_L", "dir": -1, "verified": false},
-    {"id": "ca_outer_L_in",     "label": "Left outer fold IN",               "location": "commandarm", "mesh": "SW_outer_L_in",      "kind": "momentary", "joint": "outer_L", "dir": 1,  "verified": false},
-    {"id": "ca_outer_R_out",    "label": "Right outer fold OUT",             "location": "commandarm", "mesh": "SW_outer_R_out",     "kind": "momentary", "joint": "outer_R", "dir": -1, "verified": false},
-    {"id": "ca_outer_R_in",     "label": "Right outer fold IN",              "location": "commandarm", "mesh": "SW_outer_R_in",      "kind": "momentary", "joint": "outer_R", "dir": 1,  "verified": false},
-    {"id": "ca_tread_wider",    "label": "Tread adjust WIDER",               "location": "commandarm", "mesh": "SW_tread_wide",      "kind": "momentary", "joint": "tread", "dir": 1,  "verified": false},
-    {"id": "ca_tread_narrower", "label": "Tread adjust NARROWER",            "location": "commandarm", "mesh": "SW_tread_narrow",    "kind": "momentary", "joint": "tread", "dir": -1, "verified": false},
-    {"id": "ca_ladder",         "label": "Ladder raise/lower",               "location": "commandarm", "mesh": "SW_ladder",          "kind": "toggle_joint", "joint": "ladder", "verified": false},
-    {"id": "ca_display",        "label": "CommandCenter touchscreen",        "location": "commandarm", "mesh": "DSP_commandcenter",  "kind": "display", "verified": false},
-    {"id": "ca_steering_wheel", "label": "Steering wheel",                   "location": "cab",        "mesh": "CTL_steering_wheel", "kind": "wheel", "joint": "steering_wheel", "verified": false},
-
-    {"id": "ex_ladder_switch",  "label": "Ground-level ladder switch",       "location": "exterior", "mesh": "SW_ladder_ground",   "kind": "toggle_joint", "joint": "ladder", "verified": false},
-    {"id": "ex_cab_door",       "label": "Cab door handle",                  "location": "exterior", "mesh": "CTL_door_handle",    "kind": "toggle_joint", "joint": "cab_door", "verified": false},
-    {"id": "ex_hood_latch",     "label": "Engine hood latch",                "location": "exterior", "mesh": "CTL_hood_latch",     "kind": "toggle_joint", "joint": "hood", "verified": false},
-    {"id": "ex_eductor",        "label": "Chemical eductor (lower/raise)",   "location": "exterior", "mesh": "CTL_eductor_handle", "kind": "toggle_joint", "joint": "eductor", "verified": false}
+    {
+      "id": "hh_lever",
+      "label": "Hydro handle",
+      "location": "commandarm",
+      "mesh": "CTL_hydro_handle",
+      "kind": "lever",
+      "joint": "hydro_handle",
+      "verified": false
+    },
+    {
+      "id": "hh_master_spray",
+      "label": "Master spray ON/OFF (spray key)",
+      "location": "hydro_handle",
+      "mesh": "BTN_master_spray",
+      "kind": "toggle",
+      "state": "spray_on",
+      "verified": false,
+      "evidence": "yellow hydro-handle key with a spraying-nozzle legend"
+    },
+    {
+      "id": "hh_boom_raise",
+      "label": "Boom height raise (centre)",
+      "location": "hydro_handle",
+      "mesh": "BTN_boom_raise",
+      "kind": "momentary",
+      "joint": "boom_height",
+      "dir": 1,
+      "verified": false,
+      "evidence": "hydro-handle key: boom with converging arrows (upper half)"
+    },
+    {
+      "id": "hh_boom_lower",
+      "label": "Boom height lower (centre)",
+      "location": "hydro_handle",
+      "mesh": "BTN_boom_lower",
+      "kind": "momentary",
+      "joint": "boom_height",
+      "dir": -1,
+      "verified": false,
+      "evidence": "hydro-handle key: boom with converging arrows (lower half)"
+    },
+    {
+      "id": "hh_tilt_L_up",
+      "label": "Left wing tilt up",
+      "location": "hydro_handle",
+      "mesh": "BTN_tilt_L_up",
+      "kind": "momentary",
+      "joint": "tilt_L",
+      "dir": 1,
+      "verified": false,
+      "evidence": "hydro-handle 2x2 block: wing icons with up/down arrows"
+    },
+    {
+      "id": "hh_tilt_L_down",
+      "label": "Left wing tilt down",
+      "location": "hydro_handle",
+      "mesh": "BTN_tilt_L_down",
+      "kind": "momentary",
+      "joint": "tilt_L",
+      "dir": -1,
+      "verified": false,
+      "evidence": "hydro-handle 2x2 block: wing icons with up/down arrows"
+    },
+    {
+      "id": "hh_tilt_R_up",
+      "label": "Right wing tilt up",
+      "location": "hydro_handle",
+      "mesh": "BTN_tilt_R_up",
+      "kind": "momentary",
+      "joint": "tilt_R",
+      "dir": 1,
+      "verified": false,
+      "evidence": "hydro-handle 2x2 block: wing icons with up/down arrows"
+    },
+    {
+      "id": "hh_tilt_R_down",
+      "label": "Right wing tilt down",
+      "location": "hydro_handle",
+      "mesh": "BTN_tilt_R_down",
+      "kind": "momentary",
+      "joint": "tilt_R",
+      "dir": -1,
+      "verified": false,
+      "evidence": "hydro-handle 2x2 block: wing icons with up/down arrows"
+    },
+    {
+      "id": "hh_resume",
+      "label": "Boom height AUTO (BoomTrac)",
+      "location": "hydro_handle",
+      "mesh": "BTN_resume",
+      "kind": "toggle",
+      "state": "boomtrac",
+      "verified": false,
+      "evidence": "hydro-handle key legend: boom + AUTO"
+    },
+    {
+      "id": "hh_range_up",
+      "label": "Speed range up (E rocker)",
+      "location": "hydro_handle",
+      "mesh": "BTN_range_up",
+      "kind": "step",
+      "state": "range",
+      "dir": 1,
+      "verified": false,
+      "evidence": "round E rocker on the hydro handle"
+    },
+    {
+      "id": "hh_range_down",
+      "label": "Speed range down (E rocker)",
+      "location": "hydro_handle",
+      "mesh": "BTN_range_down",
+      "kind": "step",
+      "state": "range",
+      "dir": -1,
+      "verified": false,
+      "evidence": "round E rocker on the hydro handle"
+    },
+    {
+      "id": "ca_throttle",
+      "label": "Engine speed (n/min) up/down",
+      "location": "commandarm",
+      "mesh": "CTL_throttle",
+      "kind": "step",
+      "state": "throttle",
+      "dir": 1,
+      "verified": false,
+      "evidence": "key legend: n/min rocker in the orange engine-speed plate (turtle | rocker | rabbit)"
+    },
+    {
+      "id": "ca_park",
+      "label": "Park (P)",
+      "location": "commandarm",
+      "mesh": "BTN_park",
+      "kind": "toggle",
+      "state": "park",
+      "verified": false,
+      "evidence": "key legend: (P) on the orange key at the rear of the inboard keypad"
+    },
+    {
+      "id": "ca_transport",
+      "label": "Field / Road (transport) mode",
+      "location": "display_strip",
+      "mesh": "BTN_transport",
+      "kind": "toggle",
+      "state": "road_mode",
+      "verified": false,
+      "evidence": "none: placed on a display key-strip key as a placeholder; the real control is not identified yet"
+    },
+    {
+      "id": "ca_fold_L_out",
+      "label": "Left main fold OUT",
+      "location": "commandarm",
+      "mesh": "SW_fold_L_out",
+      "kind": "momentary",
+      "joint": "fold_L",
+      "dir": -1,
+      "verified": false,
+      "evidence": "weak: outboard-column keys with boom fold-arc legends (front half OUT, rear half IN is a placeholder)"
+    },
+    {
+      "id": "ca_fold_L_in",
+      "label": "Left main fold IN",
+      "location": "commandarm",
+      "mesh": "SW_fold_L_in",
+      "kind": "momentary",
+      "joint": "fold_L",
+      "dir": 1,
+      "verified": false,
+      "evidence": "weak: outboard-column keys with boom fold-arc legends (front half OUT, rear half IN is a placeholder)"
+    },
+    {
+      "id": "ca_fold_R_out",
+      "label": "Right main fold OUT",
+      "location": "commandarm",
+      "mesh": "SW_fold_R_out",
+      "kind": "momentary",
+      "joint": "fold_R",
+      "dir": -1,
+      "verified": false,
+      "evidence": "weak: outboard-column keys with boom fold-arc legends (front half OUT, rear half IN is a placeholder)"
+    },
+    {
+      "id": "ca_fold_R_in",
+      "label": "Right main fold IN",
+      "location": "commandarm",
+      "mesh": "SW_fold_R_in",
+      "kind": "momentary",
+      "joint": "fold_R",
+      "dir": 1,
+      "verified": false,
+      "evidence": "weak: outboard-column keys with boom fold-arc legends (front half OUT, rear half IN is a placeholder)"
+    },
+    {
+      "id": "ca_outer_L_out",
+      "label": "Left outer fold OUT",
+      "location": "display_strip",
+      "mesh": "SW_outer_L_out",
+      "kind": "momentary",
+      "joint": "outer_L",
+      "dir": -1,
+      "verified": false,
+      "evidence": "none: placed on a display key-strip key as a placeholder; the real control is not identified yet"
+    },
+    {
+      "id": "ca_outer_L_in",
+      "label": "Left outer fold IN",
+      "location": "display_strip",
+      "mesh": "SW_outer_L_in",
+      "kind": "momentary",
+      "joint": "outer_L",
+      "dir": 1,
+      "verified": false,
+      "evidence": "none: placed on a display key-strip key as a placeholder; the real control is not identified yet"
+    },
+    {
+      "id": "ca_outer_R_out",
+      "label": "Right outer fold OUT",
+      "location": "display_strip",
+      "mesh": "SW_outer_R_out",
+      "kind": "momentary",
+      "joint": "outer_R",
+      "dir": -1,
+      "verified": false,
+      "evidence": "none: placed on a display key-strip key as a placeholder; the real control is not identified yet"
+    },
+    {
+      "id": "ca_outer_R_in",
+      "label": "Right outer fold IN",
+      "location": "display_strip",
+      "mesh": "SW_outer_R_in",
+      "kind": "momentary",
+      "joint": "outer_R",
+      "dir": 1,
+      "verified": false,
+      "evidence": "none: placed on a display key-strip key as a placeholder; the real control is not identified yet"
+    },
+    {
+      "id": "ca_tread_wider",
+      "label": "Tread adjust WIDER",
+      "location": "commandarm",
+      "mesh": "SW_tread_wide",
+      "kind": "momentary",
+      "joint": "tread",
+      "dir": 1,
+      "verified": false,
+      "evidence": "key legend: wheels with outward arrows (inboard keypad)"
+    },
+    {
+      "id": "ca_tread_narrower",
+      "label": "Tread adjust NARROWER",
+      "location": "commandarm",
+      "mesh": "SW_tread_narrow",
+      "kind": "momentary",
+      "joint": "tread",
+      "dir": -1,
+      "verified": false,
+      "evidence": "key legend: wheels with inward arrows (inboard keypad)"
+    },
+    {
+      "id": "ca_ladder",
+      "label": "Ladder raise/lower",
+      "location": "commandarm",
+      "mesh": "SW_ladder",
+      "kind": "toggle_joint",
+      "joint": "ladder",
+      "verified": false,
+      "evidence": "key legend: stairs with up/down arrows (inboard keypad)"
+    },
+    {
+      "id": "ca_display",
+      "label": "CommandCenter touchscreen",
+      "location": "commandarm",
+      "mesh": "DSP_commandcenter",
+      "kind": "display",
+      "verified": false
+    },
+    {
+      "id": "ca_steering_wheel",
+      "label": "Steering wheel",
+      "location": "cab",
+      "mesh": "CTL_steering_wheel",
+      "kind": "wheel",
+      "joint": "steering_wheel",
+      "verified": false
+    },
+    {
+      "id": "ex_ladder_switch",
+      "label": "Ground-level ladder switch",
+      "location": "exterior",
+      "mesh": "SW_ladder_ground",
+      "kind": "toggle_joint",
+      "joint": "ladder",
+      "verified": false
+    },
+    {
+      "id": "ex_cab_door",
+      "label": "Cab door handle",
+      "location": "exterior",
+      "mesh": "CTL_door_handle",
+      "kind": "toggle_joint",
+      "joint": "cab_door",
+      "verified": false
+    },
+    {
+      "id": "ex_hood_latch",
+      "label": "Engine hood latch",
+      "location": "exterior",
+      "mesh": "CTL_hood_latch",
+      "kind": "toggle_joint",
+      "joint": "hood",
+      "verified": false
+    },
+    {
+      "id": "ex_eductor",
+      "label": "Chemical eductor (lower/raise)",
+      "location": "exterior",
+      "mesh": "CTL_eductor_handle",
+      "kind": "toggle_joint",
+      "joint": "eductor",
+      "verified": false
+    }
   ],
-
   "service_points": [
-    {"id": "sp_engine_oil",      "label": "Engine oil dipstick and fill",     "mesh": "SVC_engine_oil",    "requires": {"hood": ">=60"}, "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_air_filter",      "label": "Engine air filter housing",        "mesh": "SVC_air_filter",    "requires": {"hood": ">=60"}, "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_fuel_filter",     "label": "Fuel filters / water separator",   "mesh": "SVC_fuel_filter",   "requires": {"hood": ">=60"}, "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_cooling",         "label": "Cooling package (radiator, charge-air cooler)", "mesh": "SVC_cooling", "requires": {"hood": ">=60"}, "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_hyd_reservoir",   "label": "Hydraulic reservoir (98.4 L)",     "mesh": "SVC_hyd_reservoir", "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_fuel_fill",       "label": "Fuel fill (565 L)",                "mesh": "SVC_fuel_fill",     "audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_def_fill",        "label": "DEF fill (29.5 L)",                "mesh": "SVC_def_fill",      "audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_battery",         "label": "Battery box / disconnect",         "mesh": "SVC_battery",       "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_solution_pump",   "label": "Solution pump",                    "mesh": "SVC_solution_pump", "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_suction_strainer","label": "Suction strainer (20 mesh)",       "mesh": "SVC_suction_strainer", "audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_pressure_strainer","label": "Pressure strainer (50 mesh)",     "mesh": "SVC_pressure_strainer","audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_boom_strainer",   "label": "Boom strainer (80 mesh)",          "mesh": "SVC_boom_strainer", "audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_quick_fill",      "label": "3 in quick-fill coupler (side fill)", "mesh": "SVC_quick_fill", "audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_rinse_tank",      "label": "Rinse tank (646 L)",               "mesh": "SVC_rinse_tank",    "audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_solution_tank",   "label": "Solution tank (4,542 L) lid",      "mesh": "SVC_tank_lid",      "audience": "operator", "src": "ESTIMATE"},
-    {"id": "sp_air_tank",        "label": "Onboard air compressor tank",      "mesh": "SVC_air_tank",      "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_wheel_motor_FL",  "label": "Front-left wheel motor / final drive", "mesh": "SVC_wheel_motor_FL", "audience": "mechanic", "src": "ESTIMATE"},
-    {"id": "sp_strut_FL",        "label": "Front-left air-ride strut",        "mesh": "SVC_strut_FL",      "audience": "mechanic", "src": "ESTIMATE"}
+    {
+      "id": "sp_engine_oil",
+      "label": "Engine oil dipstick and fill",
+      "mesh": "SVC_engine_oil",
+      "requires": {
+        "hood": ">=60"
+      },
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_air_filter",
+      "label": "Engine air filter housing",
+      "mesh": "SVC_air_filter",
+      "requires": {
+        "hood": ">=60"
+      },
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_fuel_filter",
+      "label": "Fuel filters / water separator",
+      "mesh": "SVC_fuel_filter",
+      "requires": {
+        "hood": ">=60"
+      },
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_cooling",
+      "label": "Cooling package (radiator, charge-air cooler)",
+      "mesh": "SVC_cooling",
+      "requires": {
+        "hood": ">=60"
+      },
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_hyd_reservoir",
+      "label": "Hydraulic reservoir (98.4 L)",
+      "mesh": "SVC_hyd_reservoir",
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_fuel_fill",
+      "label": "Fuel fill (565 L)",
+      "mesh": "SVC_fuel_fill",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_def_fill",
+      "label": "DEF fill (29.5 L)",
+      "mesh": "SVC_def_fill",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_battery",
+      "label": "Battery box / disconnect",
+      "mesh": "SVC_battery",
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_solution_pump",
+      "label": "Solution pump",
+      "mesh": "SVC_solution_pump",
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_suction_strainer",
+      "label": "Suction strainer (20 mesh)",
+      "mesh": "SVC_suction_strainer",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_pressure_strainer",
+      "label": "Pressure strainer (50 mesh)",
+      "mesh": "SVC_pressure_strainer",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_boom_strainer",
+      "label": "Boom strainer (80 mesh)",
+      "mesh": "SVC_boom_strainer",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_quick_fill",
+      "label": "3 in quick-fill coupler (side fill)",
+      "mesh": "SVC_quick_fill",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_rinse_tank",
+      "label": "Rinse tank (646 L)",
+      "mesh": "SVC_rinse_tank",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_solution_tank",
+      "label": "Solution tank (4,542 L) lid",
+      "mesh": "SVC_tank_lid",
+      "audience": "operator",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_air_tank",
+      "label": "Onboard air compressor tank",
+      "mesh": "SVC_air_tank",
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_wheel_motor_FL",
+      "label": "Front-left wheel motor / final drive",
+      "mesh": "SVC_wheel_motor_FL",
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    },
+    {
+      "id": "sp_strut_FL",
+      "label": "Front-left air-ride strut",
+      "mesh": "SVC_strut_FL",
+      "audience": "mechanic",
+      "src": "ESTIMATE"
+    }
   ],
-
   "interlocks": [
-    {"id": "il_fold_height",   "applies_to": ["fold_L", "fold_R"], "rule": "boom_height >= 2.1",
-     "message": "Raise the boom above the tires before you fold or unfold the main wings.", "physical": true,
-     "note": "Physical: the folded wings rest at cradle height. Below about 2.1 m nozzle height they would hit the tires. The geometry is checked live in the viewer."},
-    {"id": "il_outer_before_main", "applies_to": ["fold_L", "fold_R"], "rule": "folding IN requires outer_X >= 170",
-     "message": "Fold the outer wing onto the inner wing before you swing the main wing forward.", "physical": true},
-    {"id": "il_main_before_outer_out", "applies_to": ["outer_L", "outer_R"], "rule": "unfolding outer requires fold_X == 0",
-     "message": "Unfold the main wing completely before you unfold the outer wing.", "physical": true},
-    {"id": "il_tread_rolling", "applies_to": ["tread"], "rule": "abs(ground_speed) > 0.3 km/h AND abs(ground_speed) < 8 km/h",
-     "message": "Tread adjust only moves while the machine rolls slowly; the wheels must roll to slide in or out.", "physical": true,
-     "note": "Speed window is an ESTIMATE. Check the OM."},
-    {"id": "il_drive_ladder",  "applies_to": ["drive"], "rule": "ladder == 80 (raised)", "message": "Raise the ladder before you drive.", "physical": false, "verified": false},
-    {"id": "il_drive_park",    "applies_to": ["drive"], "rule": "park == false", "message": "Take the machine out of Park.", "physical": false},
-    {"id": "il_road_folded",   "applies_to": ["road_mode"], "rule": "boom fully folded", "message": "Road mode requires the boom folded and in the cradles.", "physical": false, "verified": false},
-    {"id": "il_spray_unfolded","applies_to": ["spray_on"], "rule": "boom fully unfolded AND not road_mode", "message": "Spraying requires the boom fully unfolded.", "physical": false, "verified": false}
+    {
+      "id": "il_fold_height",
+      "applies_to": [
+        "fold_L",
+        "fold_R"
+      ],
+      "rule": "boom_height >= 2.1",
+      "message": "Raise the boom above the tires before you fold or unfold the main wings.",
+      "physical": true,
+      "note": "Physical: the folded wings rest at cradle height. Below about 2.1 m nozzle height they would hit the tires. The geometry is checked live in the viewer."
+    },
+    {
+      "id": "il_outer_before_main",
+      "applies_to": [
+        "fold_L",
+        "fold_R"
+      ],
+      "rule": "folding IN requires outer_X >= 170",
+      "message": "Fold the outer wing onto the inner wing before you swing the main wing forward.",
+      "physical": true
+    },
+    {
+      "id": "il_main_before_outer_out",
+      "applies_to": [
+        "outer_L",
+        "outer_R"
+      ],
+      "rule": "unfolding outer requires fold_X == 0",
+      "message": "Unfold the main wing completely before you unfold the outer wing.",
+      "physical": true
+    },
+    {
+      "id": "il_tread_rolling",
+      "applies_to": [
+        "tread"
+      ],
+      "rule": "abs(ground_speed) > 0.3 km/h AND abs(ground_speed) < 8 km/h",
+      "message": "Tread adjust only moves while the machine rolls slowly; the wheels must roll to slide in or out.",
+      "physical": true,
+      "note": "Speed window is an ESTIMATE. Check the OM."
+    },
+    {
+      "id": "il_drive_ladder",
+      "applies_to": [
+        "drive"
+      ],
+      "rule": "ladder == 80 (raised)",
+      "message": "Raise the ladder before you drive.",
+      "physical": false,
+      "verified": false
+    },
+    {
+      "id": "il_drive_park",
+      "applies_to": [
+        "drive"
+      ],
+      "rule": "park == false",
+      "message": "Take the machine out of Park.",
+      "physical": false
+    },
+    {
+      "id": "il_road_folded",
+      "applies_to": [
+        "road_mode"
+      ],
+      "rule": "boom fully folded",
+      "message": "Road mode requires the boom folded and in the cradles.",
+      "physical": false,
+      "verified": false
+    },
+    {
+      "id": "il_spray_unfolded",
+      "applies_to": [
+        "spray_on"
+      ],
+      "rule": "boom fully unfolded AND not road_mode",
+      "message": "Spraying requires the boom fully unfolded.",
+      "physical": false,
+      "verified": false
+    }
   ],
-
   "cameras": {
-    "overview": {"pos": [14, 22, 9], "target": [1.5, 0, 1.8]},
-    "field": {"pos": [-14, 30, 10], "target": [-2, 0, 1]},
-    "cab": {"pos": [3.55, 0.02, 3.45], "target": [5.05, -0.1, 3.0], "fov": 70},
-    "commandarm": {"pos": [3.66, 0.12, 3.56], "target": [4.18, -0.40, 3.04], "fov": 52},
-    "display": {"pos": [3.89, -0.07, 3.45], "target": [4.29, -0.28, 3.4], "fov": 40},
-    "left_side": {"pos": [2.5, 11, 2.6], "target": [2.5, 0, 1.9]},
-    "engine": {"pos": [10.5, 4.5, 3.6], "target": [5.9, 0, 2.3]},
-    "boom_center": {"pos": [-8.5, 4, 3.2], "target": [-2.0, 0, 1.6]},
-    "wheel_FL": {"pos": [6.8, 5.6, 1.7], "target": [4.3, 1.6, 1.0]}
+    "overview": {
+      "pos": [
+        14,
+        22,
+        9
+      ],
+      "target": [
+        1.5,
+        0,
+        1.8
+      ]
+    },
+    "field": {
+      "pos": [
+        -14,
+        30,
+        10
+      ],
+      "target": [
+        -2,
+        0,
+        1
+      ]
+    },
+    "cab": {
+      "pos": [
+        3.55,
+        0.02,
+        3.45
+      ],
+      "target": [
+        5.05,
+        -0.1,
+        3.0
+      ],
+      "fov": 70
+    },
+    "commandarm": {
+      "pos": [
+        3.66,
+        0.12,
+        3.56
+      ],
+      "target": [
+        4.18,
+        -0.4,
+        3.04
+      ],
+      "fov": 52
+    },
+    "display": {
+      "pos": [
+        3.89,
+        -0.07,
+        3.45
+      ],
+      "target": [
+        4.29,
+        -0.28,
+        3.4
+      ],
+      "fov": 40
+    },
+    "left_side": {
+      "pos": [
+        2.5,
+        11,
+        2.6
+      ],
+      "target": [
+        2.5,
+        0,
+        1.9
+      ]
+    },
+    "engine": {
+      "pos": [
+        10.5,
+        4.5,
+        3.6
+      ],
+      "target": [
+        5.9,
+        0,
+        2.3
+      ]
+    },
+    "boom_center": {
+      "pos": [
+        -8.5,
+        4,
+        3.2
+      ],
+      "target": [
+        -2.0,
+        0,
+        1.6
+      ]
+    },
+    "wheel_FL": {
+      "pos": [
+        6.8,
+        5.6,
+        1.7
+      ],
+      "target": [
+        4.3,
+        1.6,
+        1.0
+      ]
+    }
   },
-
   "procedures": [
-    {"id": "op_board_cab", "title": "Board the cab", "audience": "operator", "steps": [
-      {"text": "Lower the ladder with the ground-level ladder switch.", "camera": "left_side", "highlight": "SW_ladder_ground", "set": {"ladder": 0}},
-      {"text": "Climb the ladder and open the cab door.", "highlight": "CTL_door_handle", "set": {"cab_door": 75}},
-      {"text": "Sit down, close the door, and raise the ladder from the CommandARM.", "camera": "commandarm", "highlight": "SW_ladder", "set": {"cab_door": 0, "ladder": 80}}
-    ]},
-    {"id": "op_unfold_boom", "title": "Unfold the boom for field operation", "audience": "operator", "steps": [
-      {"text": "Stop the machine on level ground with overhead clearance. Put it in Park.", "camera": "commandarm", "highlight": "BTN_park", "state": {"park": true}},
-      {"text": "Raise the boom to full height so the wings clear the cradles and tires.", "highlight": "BTN_boom_raise", "set": {"boom_height": 2.4}},
-      {"text": "Swing both main wings out (fold OUT).", "camera": "overview", "highlight": ["SW_fold_L_out", "SW_fold_R_out"], "set": {"fold_L": 0, "fold_R": 0}},
-      {"text": "Unfold both outer wings.", "highlight": ["SW_outer_L_out", "SW_outer_R_out"], "set": {"outer_L": 0, "outer_R": 0}},
-      {"text": "Lower the boom to spray height (typically 50-76 cm above the target).", "camera": "field", "highlight": "BTN_boom_lower", "set": {"boom_height": 0.76}}
-    ]},
-    {"id": "op_fold_boom", "title": "Fold the boom for transport", "audience": "operator", "steps": [
-      {"text": "Turn master spray OFF and stop the machine.", "camera": "commandarm", "highlight": "BTN_master_spray", "state": {"spray_on": false, "park": true}},
-      {"text": "Level both wings (tilt to 0) and raise the boom to full height.", "highlight": "BTN_boom_raise", "set": {"tilt_L": 0, "tilt_R": 0, "boom_height": 2.4}},
-      {"text": "Fold both outer wings IN onto the inner wings.", "camera": "overview", "highlight": ["SW_outer_L_in", "SW_outer_R_in"], "set": {"outer_L": 178, "outer_R": 178}},
-      {"text": "Fold both main wings IN until they rest in the cradles.", "highlight": ["SW_fold_L_in", "SW_fold_R_in"], "set": {"fold_L": 90, "fold_R": 90}},
-      {"text": "Lower the boom until the wings rest in the cradles, then select Road mode.", "highlight": "BTN_transport", "set": {"boom_height": 2.2}, "state": {"road_mode": true}}
-    ]},
-    {"id": "op_adjust_tread", "title": "Adjust tread width (120-160 in)", "audience": "operator", "steps": [
-      {"text": "Find a firm, level area with room to drive slowly in a straight line.", "camera": "overview"},
-      {"text": "Take the machine out of Park and drive slowly forward.", "highlight": "CTL_hydro_handle", "state": {"park": false, "speed_kph": 3}},
-      {"text": "Hold the tread WIDER (or NARROWER) switch until the display shows the target width.", "camera": "wheel_FL", "highlight": "SW_tread_wide", "set": {"tread": 3.81}},
-      {"text": "Stop, and confirm the tread width on all four legs.", "state": {"speed_kph": 0}}
-    ]},
-    {"id": "op_drive", "title": "Drive forward with the hydro handle", "audience": "operator", "steps": [
-      {"text": "Start the engine, raise the ladder, take the machine out of Park.", "camera": "commandarm", "highlight": ["SW_ladder", "BTN_park"], "set": {"ladder": 80}, "state": {"park": false}},
-      {"text": "Push the hydro handle forward to accelerate. Pull it back to slow down.", "highlight": "CTL_hydro_handle", "set": {"hydro_handle": 15}}
-    ]},
-    {"id": "mx_engine_access", "title": "Open the engine compartment for daily service", "audience": "mechanic", "steps": [
-      {"text": "Park the machine, lower the boom, stop the engine, remove the key.", "camera": "commandarm", "state": {"park": true}, "set": {"boom_height": 0.76}},
-      {"text": "Release the hood latch and raise the engine hood.", "camera": "engine", "highlight": "CTL_hood_latch", "set": {"hood": 65}},
-      {"text": "Check engine oil at the dipstick.", "highlight": "SVC_engine_oil"},
-      {"text": "Inspect the air filter restriction indicator and housing.", "highlight": "SVC_air_filter"},
-      {"text": "Drain water from the fuel filter / water separator.", "highlight": "SVC_fuel_filter"},
-      {"text": "Inspect the cooling package for debris.", "highlight": "SVC_cooling"}
-    ]},
-    {"id": "mx_strainers", "title": "Clean the solution system strainers", "audience": "operator", "steps": [
-      {"text": "Turn master spray off and park. Relieve system pressure.", "camera": "commandarm", "highlight": "BTN_master_spray", "state": {"spray_on": false, "park": true}},
-      {"text": "Suction strainer (20 mesh): close the tank valve and remove the bowl.", "camera": "left_side", "highlight": "SVC_suction_strainer"},
-      {"text": "Pressure strainer (50 mesh).", "highlight": "SVC_pressure_strainer"},
-      {"text": "Boom strainer (80 mesh), at the centre frame.", "camera": "boom_center", "highlight": "SVC_boom_strainer"}
-    ]},
-    {"id": "op_fill_eductor", "title": "Fill using the side fill and chemical eductor", "audience": "operator", "steps": [
-      {"text": "Park the machine and lower the ladder for access.", "camera": "left_side", "set": {"ladder": 0}, "state": {"park": true}},
-      {"text": "Connect the water supply to the 3 in quick-fill coupler.", "highlight": "SVC_quick_fill"},
-      {"text": "Lower the chemical eductor to working height.", "highlight": "CTL_eductor_handle", "set": {"eductor": 85}},
-      {"text": "When you finish, rinse the eductor and raise it to the stowed position.", "highlight": "CTL_eductor_handle", "set": {"eductor": 0}}
-    ]}
+    {
+      "id": "op_board_cab",
+      "title": "Board the cab",
+      "audience": "operator",
+      "steps": [
+        {
+          "text": "Lower the ladder with the ground-level ladder switch.",
+          "camera": "left_side",
+          "highlight": "SW_ladder_ground",
+          "set": {
+            "ladder": 0
+          }
+        },
+        {
+          "text": "Climb the ladder and open the cab door.",
+          "highlight": "CTL_door_handle",
+          "set": {
+            "cab_door": 75
+          }
+        },
+        {
+          "text": "Sit down, close the door, and raise the ladder from the CommandARM.",
+          "camera": "commandarm",
+          "highlight": "SW_ladder",
+          "set": {
+            "cab_door": 0,
+            "ladder": 80
+          }
+        }
+      ]
+    },
+    {
+      "id": "op_unfold_boom",
+      "title": "Unfold the boom for field operation",
+      "audience": "operator",
+      "steps": [
+        {
+          "text": "Stop the machine on level ground with overhead clearance. Put it in Park.",
+          "camera": "commandarm",
+          "highlight": "BTN_park",
+          "state": {
+            "park": true
+          }
+        },
+        {
+          "text": "Raise the boom to full height so the wings clear the cradles and tires.",
+          "highlight": "BTN_boom_raise",
+          "set": {
+            "boom_height": 2.4
+          }
+        },
+        {
+          "text": "Swing both main wings out (fold OUT).",
+          "camera": "overview",
+          "highlight": [
+            "SW_fold_L_out",
+            "SW_fold_R_out"
+          ],
+          "set": {
+            "fold_L": 0,
+            "fold_R": 0
+          }
+        },
+        {
+          "text": "Unfold both outer wings.",
+          "highlight": [
+            "SW_outer_L_out",
+            "SW_outer_R_out"
+          ],
+          "set": {
+            "outer_L": 0,
+            "outer_R": 0
+          }
+        },
+        {
+          "text": "Lower the boom to spray height (typically 50-76 cm above the target).",
+          "camera": "field",
+          "highlight": "BTN_boom_lower",
+          "set": {
+            "boom_height": 0.76
+          }
+        }
+      ]
+    },
+    {
+      "id": "op_fold_boom",
+      "title": "Fold the boom for transport",
+      "audience": "operator",
+      "steps": [
+        {
+          "text": "Turn master spray OFF and stop the machine.",
+          "camera": "commandarm",
+          "highlight": "BTN_master_spray",
+          "state": {
+            "spray_on": false,
+            "park": true
+          }
+        },
+        {
+          "text": "Level both wings (tilt to 0) and raise the boom to full height.",
+          "highlight": "BTN_boom_raise",
+          "set": {
+            "tilt_L": 0,
+            "tilt_R": 0,
+            "boom_height": 2.4
+          }
+        },
+        {
+          "text": "Fold both outer wings IN onto the inner wings.",
+          "camera": "overview",
+          "highlight": [
+            "SW_outer_L_in",
+            "SW_outer_R_in"
+          ],
+          "set": {
+            "outer_L": 178,
+            "outer_R": 178
+          }
+        },
+        {
+          "text": "Fold both main wings IN until they rest in the cradles.",
+          "highlight": [
+            "SW_fold_L_in",
+            "SW_fold_R_in"
+          ],
+          "set": {
+            "fold_L": 90,
+            "fold_R": 90
+          }
+        },
+        {
+          "text": "Lower the boom until the wings rest in the cradles, then select Road mode.",
+          "highlight": "BTN_transport",
+          "set": {
+            "boom_height": 2.2
+          },
+          "state": {
+            "road_mode": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "op_adjust_tread",
+      "title": "Adjust tread width (120-160 in)",
+      "audience": "operator",
+      "steps": [
+        {
+          "text": "Find a firm, level area with room to drive slowly in a straight line.",
+          "camera": "overview"
+        },
+        {
+          "text": "Take the machine out of Park and drive slowly forward.",
+          "highlight": "CTL_hydro_handle",
+          "state": {
+            "park": false,
+            "speed_kph": 3
+          }
+        },
+        {
+          "text": "Hold the tread WIDER (or NARROWER) switch until the display shows the target width.",
+          "camera": "wheel_FL",
+          "highlight": "SW_tread_wide",
+          "set": {
+            "tread": 3.81
+          }
+        },
+        {
+          "text": "Stop, and confirm the tread width on all four legs.",
+          "state": {
+            "speed_kph": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "op_drive",
+      "title": "Drive forward with the hydro handle",
+      "audience": "operator",
+      "steps": [
+        {
+          "text": "Start the engine, raise the ladder, take the machine out of Park.",
+          "camera": "commandarm",
+          "highlight": [
+            "SW_ladder",
+            "BTN_park"
+          ],
+          "set": {
+            "ladder": 80
+          },
+          "state": {
+            "park": false
+          }
+        },
+        {
+          "text": "Push the hydro handle forward to accelerate. Pull it back to slow down.",
+          "highlight": "CTL_hydro_handle",
+          "set": {
+            "hydro_handle": 15
+          }
+        }
+      ]
+    },
+    {
+      "id": "mx_engine_access",
+      "title": "Open the engine compartment for daily service",
+      "audience": "mechanic",
+      "steps": [
+        {
+          "text": "Park the machine, lower the boom, stop the engine, remove the key.",
+          "camera": "commandarm",
+          "state": {
+            "park": true
+          },
+          "set": {
+            "boom_height": 0.76
+          }
+        },
+        {
+          "text": "Release the hood latch and raise the engine hood.",
+          "camera": "engine",
+          "highlight": "CTL_hood_latch",
+          "set": {
+            "hood": 65
+          }
+        },
+        {
+          "text": "Check engine oil at the dipstick.",
+          "highlight": "SVC_engine_oil"
+        },
+        {
+          "text": "Inspect the air filter restriction indicator and housing.",
+          "highlight": "SVC_air_filter"
+        },
+        {
+          "text": "Drain water from the fuel filter / water separator.",
+          "highlight": "SVC_fuel_filter"
+        },
+        {
+          "text": "Inspect the cooling package for debris.",
+          "highlight": "SVC_cooling"
+        }
+      ]
+    },
+    {
+      "id": "mx_strainers",
+      "title": "Clean the solution system strainers",
+      "audience": "operator",
+      "steps": [
+        {
+          "text": "Turn master spray off and park. Relieve system pressure.",
+          "camera": "commandarm",
+          "highlight": "BTN_master_spray",
+          "state": {
+            "spray_on": false,
+            "park": true
+          }
+        },
+        {
+          "text": "Suction strainer (20 mesh): close the tank valve and remove the bowl.",
+          "camera": "left_side",
+          "highlight": "SVC_suction_strainer"
+        },
+        {
+          "text": "Pressure strainer (50 mesh).",
+          "highlight": "SVC_pressure_strainer"
+        },
+        {
+          "text": "Boom strainer (80 mesh), at the centre frame.",
+          "camera": "boom_center",
+          "highlight": "SVC_boom_strainer"
+        }
+      ]
+    },
+    {
+      "id": "op_fill_eductor",
+      "title": "Fill using the side fill and chemical eductor",
+      "audience": "operator",
+      "steps": [
+        {
+          "text": "Park the machine and lower the ladder for access.",
+          "camera": "left_side",
+          "set": {
+            "ladder": 0
+          },
+          "state": {
+            "park": true
+          }
+        },
+        {
+          "text": "Connect the water supply to the 3 in quick-fill coupler.",
+          "highlight": "SVC_quick_fill"
+        },
+        {
+          "text": "Lower the chemical eductor to working height.",
+          "highlight": "CTL_eductor_handle",
+          "set": {
+            "eductor": 85
+          }
+        },
+        {
+          "text": "When you finish, rinse the eductor and raise it to the stowed position.",
+          "highlight": "CTL_eductor_handle",
+          "set": {
+            "eductor": 0
+          }
+        }
+      ]
+    }
   ]
 }

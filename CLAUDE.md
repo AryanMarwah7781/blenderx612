@@ -70,5 +70,7 @@ IDs are stable. Rename them only together with the spec and the Blender script.
 
 - 2026-11-02: CommandARM rebuilt (v3) from top-down and over-the-shoulder photos of production 612R cabs (MachineFinder listings 11882541, 10321271, 10409271, 11690386). Hydro handle sits front-inboard in a gate slot, with an outboard 2x8 key column, pocket and thumbwheels, orange double key, HVAC block, inboard 2x3 keys and the orange (P) park key. Only the P key is identified by its printed symbol. Every other key→function mapping is a placeholder: fix it from the manual in plan step 3. Reference photos are not committed (copyright); fetch them again from the listings if needed.
 
+- 2026-11-02: CommandARM v4, traced from Aryan's close-up photos of a real 612R CommandARM (top-down console, display key strip, hydro handle from several angles). Positions come from the top-down photo via `P()` in `build_612r.py`, and legends are printed on the keys. Controls carry an `evidence` field saying what their key legend shows. The legends identify tread narrow/wide, ladder, park, engine-speed rocker (orange n/min plate), spray key, AUTO boom height, wing tilt 2x2 and the E range rocker. Fold, outer-fold and Field/Road keys are placeholders (outer fold and Field/Road sit on display-strip keys). Everything stays verified:false until checked against the OM.
+
 ### Probe results
 _(fill in)_
