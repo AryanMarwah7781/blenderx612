@@ -279,6 +279,27 @@ class Builder:
         self._tag([v for r in rings for v in r], m, smooth)
         return self
 
+    def text(self, body, size, m, matrix):
+        """Append flat 3-D text. matrix maps text space (x = reading direction, y = up, z = out of the
+        surface) to world space."""
+        cu = bpy.data.curves.new("txt", "FONT")
+        cu.body, cu.size, cu.extrude, cu.align_x, cu.align_y = body, size, 0.0015, "CENTER", "CENTER"
+        fp = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if os.path.exists(fp):
+            cu.font = bpy.data.fonts.load(fp, check_existing=True)
+        ob = bpy.data.objects.new("txt_tmp", cu)
+        bpy.context.scene.collection.objects.link(ob)
+        dg = bpy.context.evaluated_depsgraph_get()
+        me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+        mtx = matrix if self.local else Matrix.Translation(-self.origin) @ matrix
+        me.transform(mtx)
+        n0 = len(self.bm.verts)
+        self.bm.from_mesh(me)
+        self.bm.verts.ensure_lookup_table()
+        self._tag(self.bm.verts[n0:], m)
+        bpy.data.objects.remove(ob); bpy.data.curves.remove(cu); bpy.data.meshes.remove(me)
+        return self
+
     def done(self, bevel=0.0, smooth=False, props=None):
         me = bpy.data.meshes.new(self.name)
         bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
@@ -355,9 +376,11 @@ def frame(b):
         b.tube((CRADLE_X, s * 0.95, FRAME_TOP - 0.1), (CRADLE_X, s * 1.25, 2.12), 0.04, M["green"])
     # entry platform at the ladder top (left)
     b.box((5.30, 1.08, CAB_FLOOR - 0.08), (0.75, 0.34, 0.05), M["dsteel"])
-    for x in (4.98, 5.62):
-        b.tube((x, 1.24, CAB_FLOOR - 0.06), (x, 1.24, CAB_FLOOR + 0.85), 0.018, M["yellow"])
-    b.tube((4.98, 1.24, CAB_FLOOR + 0.85), (5.62, 1.24, CAB_FLOOR + 0.85), 0.018, M["yellow"])
+    for x in (4.98, 5.30, 5.62):
+        b.tube((x, 1.24, CAB_FLOOR - 0.06), (x, 1.24, CAB_FLOOR + 0.95), 0.02, M["green"])
+    for z in (CAB_FLOOR + 0.50, CAB_FLOOR + 0.95):
+        b.tube((4.98, 1.24, z), (5.62, 1.24, z), 0.02, M["green"])
+    b.tube((5.62, 1.24, CAB_FLOOR + 0.95), (5.66, 0.92, CAB_FLOOR + 0.95), 0.02, M["green"])
 part("chassis_frame", chassis, frame, bevel=0.012)
 
 # ============================================================================= WHEEL LEGS
@@ -417,10 +440,10 @@ def build_leg(tag_, x, side, front):
         def fender(b):   # black front fender over the top-rear of the tyre, steers with the wheel
             pts = []
             for k in range(15):
-                a = math.radians(40 + 120 * k / 14)
-                pts.append((x + (TIRE_R + 0.09) * math.cos(a), hub_z + (TIRE_R + 0.09) * math.sin(a)))
+                a = math.radians(28 + 142 * k / 14)
+                pts.append((x + (TIRE_R + 0.11) * math.cos(a), hub_z + (TIRE_R + 0.11) * math.sin(a)))
             for (ax_, az), (bx_, bz) in zip(pts, pts[1:]):
-                b.box(((ax_ + bx_) / 2, y_wheel, (az + bz) / 2), (math.hypot(bx_ - ax_, bz - az) + 0.01, TIRE_W + 0.16, 0.025),
+                b.box(((ax_ + bx_) / 2, y_wheel, (az + bz) / 2), (math.hypot(bx_ - ax_, bz - az) + 0.01, TIRE_W + 0.24, 0.03),
                       M["black"], rot=Matrix.Rotation(-math.atan2(bz - az, bx_ - ax_), 3, "Y"))
             b.tube((x, y_leg, hub_z + 0.75), (x, y_wheel - side * 0.05, hub_z + TIRE_R + 0.08), 0.03, M["black"])
         part(f"fender_{tag_}", steer_parent, fender)
@@ -496,9 +519,15 @@ svc("SVC_battery", "sp_battery", "Battery box / disconnect",
 svc("SVC_air_tank", "sp_air_tank", "Onboard air compressor tank",
     lambda b: b.cyl((2.0, 0, FRAME_BOT + 0.12), 0.11, 0.9, M["dsteel"], axis="X"))
 
-# exhaust stack at the left front corner of the cab
-part("exhaust_stack", chassis, lambda b: b.cyl((NOSE_X0 + 0.10, 0.50, 3.35), 0.075, 1.30, M["black"])
-     .cyl((NOSE_X0 + 0.10, 0.50, 4.03), 0.085, 0.08, M["black"]).box((NOSE_X0 + 0.10, 0.50, 2.80), (0.20, 0.20, 0.25), M["dsteel"]))
+# exhaust: large black muffler box + stack, outboard of the hood at the cab's left front corner
+def exhaust(b):
+    mx, my = NOSE_X0 + 0.08, 0.80
+    b.loft([rrect(mx + dx, 0.13, 2.80, 3.55, 0.08, y0=my) for dx in (-0.14, -0.12, 0.12, 0.14)], M["black_g"])   # muffler
+    b.cyl((mx, my, 3.85), 0.075, 0.62, M["black_g"])                                                            # stack
+    b.cyl((mx, my, 4.17), 0.082, 0.05, M["black"])
+    b.box((mx - 0.20, my - 0.02, 3.20), (0.26, 0.05, 0.06), M["black"])                                         # cab bracket
+    b.box((mx - 0.20, my - 0.02, 2.95), (0.26, 0.05, 0.06), M["black"])
+part("exhaust_stack", chassis, exhaust)
 
 # fuel + DEF (right side, between the axles)
 part("fuel_tank", chassis, lambda b: b.box((2.10, -0.98, 1.92), (1.55, 0.45, 0.62), M["black"]), bevel=0.04)
@@ -506,28 +535,82 @@ svc("SVC_fuel_fill", "sp_fuel_fill", "Fuel fill (565 L)", lambda b: b.cyl((2.60,
 svc("SVC_def_fill", "sp_def_fill", "DEF fill (29.5 L)",
     lambda b: b.box((3.05, -0.98, 1.95), (0.30, 0.40, 0.40), M["white"]).cyl((3.05, -1.21, 2.08), 0.05, 0.06, M["blue"], axis="Y"))
 
-# engine hood / nose: hinged at the cab, the front tilts up (grille goes with it)
+# engine hood / nose: modern Deere styling traced from photos (wide rounded hood, full-face black grille,
+# LED lights in the top corners, yellow stripe with the John Deere wordmark, vertical side louvres).
+# Hinged at the cab; the front tilts up and the grille goes with it.
+SE_N = 3.0                                     # superellipse exponent of the hood cross-section
+def se_pt(x, hw, zc, hh, t):
+    c, s_ = math.cos(t), math.sin(t)
+    return Vector((x, hw * math.copysign(abs(c) ** (2 / SE_N), c), zc + hh * math.copysign(abs(s_) ** (2 / SE_N), s_)))
+def se_ring(x, hw, z0, z1, k=40):
+    zc, hh = (z0 + z1) / 2, (z1 - z0) / 2
+    return [se_pt(x, hw, zc, hh, 2 * math.pi * i / k) for i in range(k)]
+HOOD_SECS = [(NOSE_X0 + 0.02, 0.62, 1.60, 2.98), (NOSE_X0 + 0.60, 0.64, 1.60, 2.97), (6.30, 0.63, 1.62, 2.93),
+             (6.66, 0.60, 1.64, 2.86), (6.78, 0.55, 1.68, 2.80)]
+def hood_band(b, t0, t1, m, lift=0.004, xs=None):
+    """A thin decal band lying on the hood surface between parametric angles t0..t1."""
+    rings = []
+    for (x, hw, z0, z1) in (xs or HOOD_SECS[1:4]):
+        zc, hh = (z0 + z1) / 2, (z1 - z0) / 2
+        ts = [t0 + (t1 - t0) * i / 4 for i in range(5)]
+        outer = [se_pt(x, hw + lift, zc, hh + lift, t) for t in ts]
+        inner = [se_pt(x, hw - 0.002, zc, hh - 0.002, t) for t in reversed(ts)]
+        rings.append(outer + inner)
+    b.loft(rings, m, smooth=True)
+
 hood_piv = empty("PIV_hood", (NOSE_X0 + 0.02, 0, 2.97), chassis)
 def hood(b):
-    secs = []
-    for t, w, z0, z1, r in ((0.00, 0.58, 1.70, 2.97, 0.20), (0.45, 0.58, 1.70, 2.96, 0.22),
-                            (0.85, 0.57, 1.72, 2.92, 0.22), (1.00, 0.55, 1.74, 2.86, 0.21)):
-        x = NOSE_X0 + 0.02 + t * (NOSE_X1 - NOSE_X0 - 0.06)
-        secs.append(rrect(x, w, z0, z1, r))
-    b.loft(secs, M["green"])
-    gx = NOSE_X1 - 0.02
-    b.loft([rrect(gx, 0.50, 1.80, 2.62, 0.16), rrect(gx + 0.06, 0.48, 1.82, 2.60, 0.15)], M["black_g"])   # grille
-    for i in range(7):
-        b.box((gx + 0.065, 0, 1.92 + i * 0.1), (0.01, 0.86, 0.025), M["black"])
-    b.box((gx + 0.07, 0, 2.48), (0.012, 0.16, 0.10), M["yellow"])                 # emblem plate
-    for s in (1, -1):
-        b.box((gx - 0.04, s * 0.36, 2.74), (0.08, 0.26, 0.07), M["lens"])         # LED headlight strips
-        b.box((NOSE_X0 + 0.9, s * 0.585, 2.45), (0.75, 0.01, 0.30), M["black"])   # side louvres
-        for i in range(6):
-            b.box((NOSE_X0 + 0.58 + i * 0.12, s * 0.592, 2.45), (0.04, 0.008, 0.26), M["dsteel"])
-part("engine_hood", hood_piv, hood, smooth=False)
-o = part("CTL_hood_latch", hood_piv, lambda b: b.box((NOSE_X1 + 0.06, 0, 1.76), (0.05, 0.16, 0.05), M["yellow"]))
+    b.loft([se_ring(*sec) for sec in HOOD_SECS], M["green"])
+    # grille: black, recessed, with mesh bars
+    gx = HOOD_SECS[-1][0]
+    b.loft([se_ring(gx - 0.01, 0.50, 1.70, 2.70), se_ring(gx + 0.035, 0.47, 1.73, 2.66)], M["black_g"])
+    for i in range(22):                                                         # fine grille mesh
+        z = 1.78 + i * 0.038
+        b.box((gx + 0.038, 0, z), (0.006, 0.88 - abs(z - 2.2) * 0.28, 0.006), M["dsteel"])
+    for j in range(-14, 15):
+        b.box((gx + 0.040, j * 0.03, 2.18), (0.006, 0.005, 0.80), M["dsteel"])
+    # LED headlights in the top corners of the grille
+    for s_ in (1, -1):
+        b.box((gx + 0.010, s_ * 0.31, 2.60), (0.08, 0.32, 0.14), M["black_g"])      # LED headlight cluster
+        for k in range(3):
+            b.box((gx + 0.052, s_ * (0.20 + k * 0.10), 2.60), (0.004, 0.085, 0.10), M["lens"])
+    # badge (green field, yellow mark) on the left of the grille face
+    b.box((gx + 0.05, 0.30, 2.30), (0.006, 0.12, 0.12), M["yellow"])
+    b.box((gx + 0.054, 0.30, 2.30), (0.004, 0.09, 0.09), M["green"])
+    # yellow stripe along each side, wordmark + model number in black
+    STRIPE = [(x, hw, z0, z1) for (x, hw, z0, z1) in HOOD_SECS[:4]] + [(6.74, 0.575, 1.66, 2.83)]
+    for s_, t0, t1 in ((1, 0.30, 0.52), (-1, math.pi - 0.52, math.pi - 0.30)):
+        hood_band(b, t0, t1, M["yellow"], xs=STRIPE)
+        x0, hw, z0, z1 = HOOD_SECS[1]                                             # widest section
+        zc, hh = (z0 + z1) / 2, (z1 - z0) / 2
+        tm = (t0 + t1) / 2
+        p = se_pt(5.90, hw + 0.006, zc, hh + 0.006, tm)
+        q = se_pt(5.95, hw, zc, hh, tm + 0.05 * s_)
+        nrm = Vector((0, p.y, (p.z - zc) * (hw / hh) ** 2)).normalized()          # approx. surface normal
+        read = Vector((-s_, 0, 0))                                                # reads front -> back on each side
+        up = nrm.cross(read).normalized() * (-1 if s_ > 0 else 1)
+        if up.z < 0:
+            up = -up
+        basis = Matrix((read, up, nrm)).transposed()
+        b.text("JOHN DEERE", 0.088, M["black"], Matrix.Translation(p + nrm * 0.012) @ basis.to_4x4())
+        p2 = se_pt(6.50, hw + 0.006, zc, hh + 0.006, tm + 0.30 * s_)
+        b.text("612R", 0.06, M["black"], Matrix.Translation(p2 + nrm * 0.003) @ basis.to_4x4())
+        # vertical side louvres near the front
+        for i in range(3):
+            xl = 6.30 + i * 0.09
+            b.box((xl, s_ * (hw * 0.985), 2.30), (0.05, 0.012, 0.42), M["black"])
+part("engine_hood", hood_piv, hood)
+o = part("CTL_hood_latch", hood_piv, lambda b: b.box((HOOD_SECS[-1][0] + 0.05, 0, 1.76), (0.05, 0.16, 0.05), M["yellow"]))
 tag(o, "control", "ex_hood_latch", "Engine hood latch")
+
+# front bumper / frame nose under the grille, with the front-fill coupler
+def bumper(b):
+    b.box((6.62, 0, 1.58), (0.42, 1.05, 0.20), M["green"])
+    b.box((6.86, 0, 1.52), (0.08, 0.70, 0.10), M["green_d"])
+    b.cyl((6.92, 0.28, 1.55), 0.06, 0.16, M["black"], axis="X")
+    b.cyl((7.01, 0.28, 1.55), 0.075, 0.03, M["yellow"], axis="X")
+    b.box((6.95, 0.28, 1.66), (0.03, 0.03, 0.14), M["yellow"])
+part("front_bumper", chassis, bumper, bevel=0.015)
 
 # ============================================================================= SOLUTION SYSTEM
 TANK_X0, TANK_X1 = -0.25, 2.85
@@ -601,7 +684,9 @@ def cab_shell(b):
     z0 = CAB_FLOOR - 0.22
     b.box((cx, 0, z0 + 0.10), (CAB_X1 - CAB_X0 + 0.06, 2 * CAB_HW + 0.06, 0.24), M["green"])          # floor pan
     b.box((cx - 0.05, 0, (FRAME_TOP + z0) / 2 + 0.05), (1.5, 1.2, z0 - FRAME_TOP), M["green"])         # cab mount
-    b.box((cx, 0, CAB_FLOOR + 0.18), (CAB_X1 - CAB_X0, 2 * CAB_HW, 0.40), M["black"])                  # lower body
+    b.box((cx, 0, CAB_FLOOR + 0.18), (CAB_X1 - CAB_X0, 2 * CAB_HW, 0.40), M["green"])                  # lower body (green)
+    b.box((cx, 0, CAB_FLOOR + 0.39), (CAB_X1 - CAB_X0 + 0.01, 2 * CAB_HW + 0.01, 0.03), M["black_g"])  # window-line trim
+    b.box((cx, 0, CAB_FLOOR - 0.03), (CAB_X1 - CAB_X0 + 0.02, 2 * CAB_HW + 0.02, 0.06), M["black"])    # lower skirt
     # pillars (A, B on the door side, C)
     for x in (CAB_X0 + 0.05, CAB_X1 - 0.07):
         for y in (CAB_HW - 0.05, -CAB_HW + 0.05):
@@ -627,9 +712,9 @@ def cab_shell(b):
         p1 = Vector((CAB_X1 + 0.18, s * (CAB_HW + 0.55), CAB_ROOF - 0.25))
         b.tube(p0, p1, 0.022, M["black"])
         b.tube(p1, p1 + Vector((0, 0, -0.35)), 0.02, M["black"])
-        b.box(p1 + Vector((0.03, s * 0.05, -0.12)), (0.10, 0.22, 0.42), M["green"])
+        b.box(p1 + Vector((0.03, s * 0.05, -0.12)), (0.10, 0.22, 0.42), M["black_g"])
         b.box(p1 + Vector((-0.025, s * 0.05, -0.12)), (0.01, 0.19, 0.38), M["steel"])
-        b.box(p1 + Vector((0.03, s * 0.05, -0.47)), (0.08, 0.18, 0.18), M["green"])                   # convex mirror
+        b.box(p1 + Vector((0.03, s * 0.05, -0.47)), (0.08, 0.18, 0.18), M["black_g"])                 # convex mirror
 part("cab_shell", cab, cab_shell, bevel=0.012)
 
 def cab_glass(b):
@@ -1182,6 +1267,8 @@ if DO_RENDER:
     TRANSPORT = dict(boom_height=2.2, outer_L=178, outer_R=178, fold_L=90, fold_R=90, ladder=0)
     shots = [
         ("render_transport.png", TRANSPORT, ((12.5, 9.5, 3.4), (2.6, 0.2, 2.0), 30)),
+        ("render_front.png",     TRANSPORT, ((11.5, 6.0, 2.4), (5.4, 0.2, 2.3), 38)),
+        ("render_nose.png",      dict(boom_height=0.76, ladder=0), ((10.2, 4.6, 2.6), (5.6, 0.0, 2.35), 42)),
         ("render_side.png",      TRANSPORT, ((2.6, 20, 2.2), (2.6, 0, 2.0), 40)),
         ("render_rear.png",      TRANSPORT, ((-11, -4.5, 2.6), (0, 0, 2.0), 35)),
         ("render_field.png",     dict(boom_height=0.76), ((-13, 21, 6.5), (-1, 4, 1.2), 30)),
