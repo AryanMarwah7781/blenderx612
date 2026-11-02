@@ -68,5 +68,7 @@ IDs are stable. Rename them only together with the spec and the Blender script.
 ## Status / handoff notes
 - 2026-11-02: branch created from `claude/john-deere-612r-sprayer` (model reworked to match dealer photos of a production 612R: front engine, cab over the front axle, green folded boom). The cloud session had queued the step-1 probe in the old "Context window walkthrough" session. Do step 1 here instead and record results below.
 
+- 2026-11-02: CommandARM rebuilt from dealer photos (shape, colours, key layout). Key→function mapping still unverified. Fix it from the manual in plan step 3.
+
 ### Probe results
 _(fill in)_

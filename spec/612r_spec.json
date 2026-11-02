@@ -57,6 +57,8 @@
     "breakaway": 3.31
   },
 
+  "commandarm_note": "Physical CommandARM layout (light-gray armrest, sloped keypad with 4x4 grid, two orange keys, rotary dial, orange/black hydro handle with yellow triangle + key cluster, display on a front post) follows dealer photos of a production 612R. WHICH key performs WHICH function is a placeholder until confirmed from the operator's manual, so every control stays verified:false.",
+
   "joints": [
     {"id": "steer",            "label": "Front steer angle (outer wheel)", "type": "rotate", "unit": "deg", "min": -28, "max": 28, "default": 0, "rate": 20,
      "nodes": {"PIV_steer_FL": "ackermann_L", "PIV_steer_FR": "ackermann_R"}, "src": "DERIVED",
@@ -168,8 +170,8 @@
     "overview": {"pos": [14, 22, 9], "target": [1.5, 0, 1.8]},
     "field": {"pos": [-14, 30, 10], "target": [-2, 0, 1]},
     "cab": {"pos": [3.55, 0.02, 3.45], "target": [5.05, -0.1, 3.0], "fov": 70},
-    "commandarm": {"pos": [3.73, 0.12, 3.4], "target": [4.05, -0.42, 2.98], "fov": 50},
-    "display": {"pos": [3.85, -0.38, 3.36], "target": [4.25, -0.68, 3.4], "fov": 40},
+    "commandarm": {"pos": [3.66, 0.12, 3.56], "target": [4.18, -0.40, 3.04], "fov": 52},
+    "display": {"pos": [3.89, -0.07, 3.45], "target": [4.29, -0.28, 3.4], "fov": 40},
     "left_side": {"pos": [2.5, 11, 2.6], "target": [2.5, 0, 1.9]},
     "engine": {"pos": [10.5, 4.5, 3.6], "target": [5.9, 0, 2.3]},
     "boom_center": {"pos": [-8.5, 4, 3.2], "target": [-2.0, 0, 1.6]},
