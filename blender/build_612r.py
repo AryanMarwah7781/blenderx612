@@ -134,9 +134,11 @@ M = {
     "dsteel":  mat("Dark_Steel", srgb("3E4246"), 0.7, 0.45),
     "glass":   mat("Cab_Glass", srgb("1E2A30"), 0.0, 0.03, alpha=0.30),
     "seat":    mat("Seat_Leather_Gray", srgb("B8B5AD"), 0.0, 0.55),
-    "int_gray": mat("Interior_Gray", srgb("A7A49C"), 0.0, 0.6),
+    "int_gray": mat("Interior_Gray", srgb("9D9A92"), 0.0, 0.6),
     "int_dark": mat("Interior_Charcoal", srgb("2E2F31"), 0.0, 0.5),
     "btn_o":   mat("JD_Orange_Trim", srgb("E2601E"), 0.0, 0.45),
+    "int_pad": mat("Interior_Textured", srgb("8E8B83"), 0.0, 0.85),
+    "glyph":   mat("Key_Legend", srgb("E8E8E8"), 0.0, 0.4, emit=srgb("FFFFFF"), emit_strength=0.3),
     "engine":  mat("Engine_Green", srgb("2E6A25"), 0.1, 0.5),
     "red":     mat("Hydraulic_Red", srgb("A0201A"), 0.1, 0.4),
     "tail":    mat("Tail_Light", srgb("C0101A"), 0.0, 0.15, emit=srgb("FF1010"), emit_strength=1.0),
@@ -706,137 +708,170 @@ o = bw.done()
 tag(o, "control", "ca_steering_wheel", "Steering wheel")
 
 # ---------------------------------------------------------------- CommandARM
-# Layout from photos of a production 612R armrest: light-gray armrest pod, sloped switch console with a
-# row of small keys, two long keys, a 4x4 key grid, two orange keys and a rotary dial; an orange/black
-# multi-function hydro handle at the front; the John Deere display on a post ahead of it.
-# The PHYSICAL layout follows the photos. WHICH key does WHICH function is not yet confirmed from the
-# operator's manual (controls stay "verified": false in the spec until it is).
-CA_Y = -0.40
+# Layout traced from photos of production 612R cabs (MachineFinder listings 11882541, 10321271,
+# 10409271, 11690386: near top-down and over-the-shoulder views). Front to back:
+#   display on a post at the front, with a 2-row key strip + rotary knob under it
+#   hydro handle at the FRONT-INBOARD corner, moving fore/aft in a gate slot
+#   front pocket + two thumbwheels; outboard column of 2x8 keys with a thumbwheel on top
+#   centre: lock key, orange double key, boom decal, 5x3 radio/HVAC block
+#   inboard: 2x3 keypad and the orange (P) park key; rear: large padded armrest
+# The PHYSICAL layout follows the photos. Which key does which function is NOT confirmed from
+# the operator's manual yet (only the (P) park key is identified by its printed symbol), so the
+# controls stay "verified": false in the spec.
+CA_Y = -0.40                  # armrest centre line (inboard = +y, towards the seat)
 CA_Z = CAB_FLOOR + 0.70
-def commandarm(b):
-    b.box((4.92, CA_Y, CA_Z - 0.24), (0.12, 0.12, 0.40), M["int_dark"])                       # mount post
-    # armrest pod: long rounded body, padded rear section, raised console at the front
-    b.loft([rrect(x, w, CA_Z - 0.09, CA_Z + h, 0.045, y0=CA_Y) for x, w, h in
-            ((4.58, 0.075, 0.02), (4.62, 0.090, 0.035), (4.95, 0.095, 0.045), (5.08, 0.125, 0.055), (5.40, 0.135, 0.065), (5.45, 0.12, 0.05))],
-           M["int_gray"])
-    b.loft([rrect(x, 0.075, CA_Z + 0.03, CA_Z + 0.065, 0.025, y0=CA_Y) for x in (4.62, 4.66, 4.98, 5.02)], M["seat"])   # pad
-    b.box((5.24, CA_Y - 0.01, CA_Z + 0.066), (0.32, 0.23, 0.012), M["int_dark"])              # console face (keypad bed)
-    # right-side shelf with cup holder and auxiliary switches
-    b.box((5.30, CA_Y - 0.22, CA_Z - 0.02), (0.30, 0.16, 0.10), M["int_gray"])
-    b.cyl((5.36, CA_Y - 0.22, CA_Z + 0.01), 0.045, 0.06, M["int_dark"])
-    for i in range(4):
-        b.box((5.20 + i * 0.03, CA_Y - 0.26, CA_Z + 0.035), (0.022, 0.03, 0.008), M["btn_k"])
-    # display post
-    b.tube((5.47, CA_Y + 0.08, CA_Z + 0.02), (5.535, CA_Y + 0.115, CA_Z + 0.31), 0.016, M["int_dark"])
-part("commandarm_body", cab, commandarm, bevel=0.006)
+TOP = CA_Z + 0.078            # console top surface
 
-# John Deere display (about 10 in), on the post ahead of the hydro handle, angled at the operator
-DSP_C = Vector((5.54, CA_Y + 0.12, CA_Z + 0.42))
-DSP_ROT = Matrix.Rotation(math.radians(-28), 3, "Z") @ Matrix.Rotation(math.radians(-14), 3, "Y")
-DSP_W, DSP_H = 0.29, 0.21
+def commandarm(b):
+    b.box((4.92, CA_Y, CA_Z - 0.26), (0.13, 0.13, 0.40), M["int_dark"])                      # mount post
+    secs = [(4.56, 0.070, 0.030), (4.60, 0.088, 0.050), (4.98, 0.095, 0.060),               # padded armrest
+            (5.03, 0.135, 0.075), (5.40, 0.140, 0.075), (5.46, 0.118, 0.055)]                  # console + nose
+    b.loft([rrect(x, w, CA_Z - 0.10, CA_Z + h, 0.035, y0=CA_Y) for x, w, h in secs], M["int_gray"])
+    b.loft([rrect(x, 0.080, CA_Z + 0.040, CA_Z + 0.072, 0.030, y0=CA_Y) for x in (4.60, 4.64, 4.95, 4.99)], M["int_pad"])
+    b.box((4.86, CA_Y - 0.094, CA_Z + 0.00), (0.035, 0.012, 0.022), M["btn_o"])                # armrest adjust lever
+    # dark key beds
+    b.box((5.225, CA_Y - 0.105, TOP - 0.002), (0.30, 0.058, 0.006), M["int_dark"])             # outboard column
+    b.box((5.135, CA_Y + 0.046, TOP - 0.002), (0.115, 0.064, 0.006), M["int_dark"])            # inboard keypad
+    b.box((5.135, CA_Y - 0.038, TOP - 0.002), (0.090, 0.092, 0.006), M["int_dark"])            # radio / HVAC block
+    b.box((5.385, CA_Y - 0.015, TOP - 0.004), (0.070, 0.10, 0.010), M["black"])                # front pocket
+    b.box((5.335, CA_Y + 0.088, TOP - 0.003), (0.19, 0.030, 0.008), M["black"])                # hydro-handle gate slot
+    b.box((5.245, CA_Y - 0.040, TOP - 0.001), (0.045, 0.085, 0.003), M["int_pad"])             # boom-function decal panel
+    b.box((5.03, CA_Y + 0.135, CA_Z + 0.02), (0.10, 0.004, 0.05), M["int_pad"])                # shift-pattern decal (inboard wall)
+    # display post
+    b.tube((5.44, CA_Y + 0.0, CA_Z + 0.04), (5.535, CA_Y + 0.015, CA_Z + 0.30), 0.018, M["int_dark"])
+part("commandarm_body", cab, commandarm, bevel=0.005)
+
+# dash ledge to the right of the operator: cup holder, power sockets
+def ledge(b):
+    b.box((5.55, -0.72, CA_Z + 0.02), (0.55, 0.20, 0.10), M["int_gray"])
+    b.cyl((5.42, -0.72, CA_Z + 0.05), 0.045, 0.06, M["int_dark"])
+    for i in range(4):
+        b.cyl((5.58 + i * 0.045, -0.72, CA_Z + 0.072), 0.013, 0.012, M["int_dark"], segs=12)
+part("dash_ledge", cab, ledge, bevel=0.01)
+
+# display: large landscape touchscreen angled at the operator, key strip + rotary knob under it
+DSP_C = Vector((5.555, CA_Y + 0.025, CA_Z + 0.43))
+DSP_ROT = Matrix.Rotation(math.radians(-22), 3, "Z") @ Matrix.Rotation(math.radians(-12), 3, "Y")
+DSP_W, DSP_H = 0.33, 0.215
 def display(b):
-    b.box(DSP_C, (0.035, DSP_W, DSP_H), M["int_dark"], rot=DSP_ROT)
-    b.box(DSP_C + DSP_ROT @ Vector((-0.018, 0, 0)), (0.002, DSP_W - 0.03, DSP_H - 0.03), M["screen"], rot=DSP_ROT)
-    for i in range(5):                                                                         # bezel keys
-        b.box(DSP_C + DSP_ROT @ Vector((-0.019, -0.05 - i * 0.022, -DSP_H / 2 - 0.012)), (0.004, 0.016, 0.012), M["btn_k"], rot=DSP_ROT)
+    b.box(DSP_C, (0.032, DSP_W, DSP_H), M["int_dark"], rot=DSP_ROT)
+    b.box(DSP_C + DSP_ROT @ Vector((-0.017, 0, 0)), (0.002, DSP_W - 0.026, DSP_H - 0.026), M["screen"], rot=DSP_ROT)
+    strip = DSP_C + DSP_ROT @ Vector((0.0, 0.0, -DSP_H / 2 - 0.040))
+    b.box(strip, (0.030, 0.20, 0.06), M["int_dark"], rot=DSP_ROT)
+    for r in range(2):
+        for c in range(7):
+            b.box(strip + DSP_ROT @ Vector((-0.016, -0.075 + c * 0.025, 0.012 - r * 0.026)), (0.004, 0.020, 0.020), M["btn_k"], rot=DSP_ROT)
+    b.cyl(strip + DSP_ROT @ Vector((-0.02, 0.122, 0.0)), 0.022, 0.025, M["int_dark"], rot=DSP_ROT @ Matrix.Rotation(math.pi / 2, 3, "Y"))
 o = part("DSP_commandcenter", cab, display)
 tag(o, "control", "ca_display", "CommandCenter touchscreen")
 # live screen: a UV-mapped quad facing the operator (the viewer paints a canvas onto it)
 _basis = Matrix(((0, 0, -1), (-1, 0, 0), (0, 1, 0)))   # columns: grid X -> -Y, grid Y -> +Z, normal -> -X
 _scr = Builder("DSP_screen", o, origin=DSP_C)
 _scr.bm.loops.layers.uv.new("UVMap")
-_m = Matrix.Translation(DSP_ROT @ Vector((-0.020, 0, 0))) @ (DSP_ROT @ _basis).to_4x4() @ Matrix.Diagonal(((DSP_W - 0.03) / 2, (DSP_H - 0.03) / 2, 1, 1))
+_m = Matrix.Translation(DSP_ROT @ Vector((-0.019, 0, 0))) @ (DSP_ROT @ _basis).to_4x4() @ Matrix.Diagonal(((DSP_W - 0.026) / 2, (DSP_H - 0.026) / 2, 1, 1))
 _r = bmesh.ops.create_grid(_scr.bm, x_segments=1, y_segments=1, size=1.0, matrix=_m, calc_uvs=True)
 _scr._tag(_r["verts"], mat("Display_Screen", srgb("0B1F12"), 0.0, 0.3, emit=srgb("1D4D2A")))
 tag(_scr.done(), "control", "ca_display", "CommandCenter touchscreen")
 
-def key(name, ref, label, pos, m, size=(0.020, 0.020, 0.010), parent=None, rot=None, shape="box"):
-    """A clickable key/button. ref=None makes a non-functional (decor) key merged into 'commandarm_keys'."""
+def key(name, ref, label, pos, m, size=(0.018, 0.018, 0.008), parent=None, rot=None, shape="box", glyph=True):
+    """A clickable key with a small white legend mark."""
+    R = rot or Matrix.Identity(3)
     def fn(b):
-        if shape == "tri":
-            b.cyl(pos, size[0] * 0.75, size[2], m, segs=3, rot=rot, smooth=False)
-        elif shape == "round":
-            b.cyl(pos, size[0] / 2, size[2], m, segs=20, rot=rot)
+        if shape == "round":
+            b.cyl(pos, size[0] / 2, size[2], m, segs=20, rot=R)
+        elif shape == "roller":
+            b.cyl(pos, size[0] / 2, size[1], m, segs=20, rot=R @ Matrix.Rotation(math.pi / 2, 3, "X"))
+            for k in range(10):   # knurl ridges
+                a = 2 * math.pi * k / 10
+                b.box(Vector(pos) + R @ Vector((size[0] / 2 * math.cos(a), 0, size[0] / 2 * math.sin(a))), (0.003, size[1], 0.003), m,
+                      rot=R @ Matrix.Rotation(-a, 3, "Y"))
         else:
-            b.box(pos, size, m, rot=rot)
-    o = part(name, parent or cab, fn, bevel=0.0025)
-    tag(o, "control", ref, label)
+            b.box(pos, size, m, rot=R)
+        if glyph and shape == "box":
+            b.box(Vector(pos) + R @ Vector((0, 0, size[2] / 2 + 0.0004)), (size[0] * 0.45, size[1] * 0.16, 0.0008), M["glyph"], rot=R)
+    o = part(name, parent or cab, fn, bevel=0.002 if shape == "box" else 0.0)
+    if ref:
+        tag(o, "control", ref, label)
     return o
 
-# console keypad (deck plane coordinates: u forward, v left)
-DECK_C = Vector((5.24, CA_Y - 0.01, CA_Z + 0.075))
-def deck(u, v):
-    return DECK_C + Vector((u, v, 0.0))
-# decor keys: front row of 10 small keys + two long keys + spare grid keys
-def decor(b):
-    for i in range(10):
-        b.box(deck(0.135, -0.09 + i * 0.02), (0.016, 0.015, 0.008), M["btn_k"])
-    for v in (0.03, -0.01):
-        b.box(deck(0.095, v), (0.014, 0.034, 0.008), M["btn_k"])
-    for u, v in ((-0.02, -0.045), (-0.045, 0.045), (-0.045, 0.015), (-0.045, -0.015), (-0.045, -0.045)):
-        b.box(deck(u, v), (0.020, 0.022, 0.009), M["btn_k"])
-part("commandarm_keys", cab, decor, bevel=0.002)
-# functional keys (4x4 grid) — function assignment is a placeholder until the manual confirms it
-grid = [
-    ("SW_fold_L_out",  "ca_fold_L_out",     "Left main fold OUT",    0.055,  0.045),
-    ("SW_fold_L_in",   "ca_fold_L_in",      "Left main fold IN",     0.055,  0.015),
-    ("SW_fold_R_in",   "ca_fold_R_in",      "Right main fold IN",    0.055, -0.015),
-    ("SW_fold_R_out",  "ca_fold_R_out",     "Right main fold OUT",   0.055, -0.045),
-    ("SW_outer_L_out", "ca_outer_L_out",    "Left outer fold OUT",   0.030,  0.045),
-    ("SW_outer_L_in",  "ca_outer_L_in",     "Left outer fold IN",    0.030,  0.015),
-    ("SW_outer_R_in",  "ca_outer_R_in",     "Right outer fold IN",   0.030, -0.015),
-    ("SW_outer_R_out", "ca_outer_R_out",    "Right outer fold OUT",  0.030, -0.045),
-    ("SW_tread_narrow","ca_tread_narrower", "Tread adjust NARROWER", 0.005,  0.045),
-    ("SW_tread_wide",  "ca_tread_wider",    "Tread adjust WIDER",    0.005,  0.015),
-    ("SW_ladder",      "ca_ladder",         "Ladder raise/lower",    0.005, -0.015),
-]
-for name, ref, label, u, v in grid:
-    key(name, ref, label, deck(u, v), M["btn_k"], size=(0.020, 0.022, 0.010))
-key("BTN_park", "ca_park", "Park", deck(-0.090, 0.070), M["btn_o"], size=(0.026, 0.026, 0.011))
-key("BTN_transport", "ca_transport", "Field / Road mode", deck(-0.100, -0.080), M["btn_o"], size=(0.026, 0.026, 0.011))
-key("CTL_throttle", "ca_throttle", "Engine throttle (rotary)", deck(-0.080, 0.000), M["int_dark"], size=(0.044, 0.044, 0.022), shape="round")
+def decor_keys(name, positions, m=None, size=(0.018, 0.018, 0.008)):
+    def fn(b):
+        for p in positions:
+            b.box(p, size, m or M["btn_k"])
+            b.box(Vector(p) + Vector((0, 0, size[2] / 2 + 0.0004)), (size[0] * 0.45, size[1] * 0.16, 0.0008), M["glyph"])
+    part(name, cab, fn, bevel=0.0015)
 
-# hydro handle: lever pivots about the lateral axis at the front of the arm.
-# Orange side covers, black head with the button cluster facing up/back toward the operator.
-HH_PIV = Vector((5.40, CA_Y + 0.02, CA_Z + 0.06))
+KZ = TOP + 0.004
+# outboard column: 2 x 8 keys; rows 0-3 carry the boom-fold functions (assignment unverified)
+COL_X = [5.345 - r * 0.034 for r in range(8)]
+COL_Y = [CA_Y - 0.092, CA_Y - 0.118]
+fold_keys = [("SW_fold_L_out", "ca_fold_L_out", "Left main fold OUT"), ("SW_fold_R_out", "ca_fold_R_out", "Right main fold OUT"),
+             ("SW_fold_L_in", "ca_fold_L_in", "Left main fold IN"), ("SW_fold_R_in", "ca_fold_R_in", "Right main fold IN"),
+             ("SW_outer_L_out", "ca_outer_L_out", "Left outer fold OUT"), ("SW_outer_R_out", "ca_outer_R_out", "Right outer fold OUT"),
+             ("SW_outer_L_in", "ca_outer_L_in", "Left outer fold IN"), ("SW_outer_R_in", "ca_outer_R_in", "Right outer fold IN")]
+for i, (name, ref, label) in enumerate(fold_keys):
+    key(name, ref, label, (COL_X[i // 2], COL_Y[i % 2], KZ), M["btn_k"], size=(0.026, 0.022, 0.008))
+decor_keys("commandarm_keys_outboard", [(COL_X[r], COL_Y[c], KZ) for r in range(4, 8) for c in range(2)], size=(0.026, 0.022, 0.008))
+key("CTL_throttle", "ca_throttle", "Engine throttle (thumbwheel)", (5.39, CA_Y - 0.105, TOP + 0.010), M["int_dark"],
+    size=(0.026, 0.020, 0.0), shape="roller")
+# front pocket thumbwheels (function unverified -> decor)
+for i, y in enumerate((CA_Y - 0.035, CA_Y + 0.005)):
+    key(f"commandarm_thumbwheel_{i}", None, "", (5.315, y, TOP + 0.008), M["int_dark"], size=(0.024, 0.018, 0.0), shape="roller")
+# centre: lock key, orange double key, radio/HVAC block
+decor_keys("commandarm_key_lock", [(5.262, CA_Y + 0.046, KZ)], size=(0.016, 0.016, 0.008))
+key("BTN_transport", "ca_transport", "Field / Road mode", (5.222, CA_Y + 0.060, KZ), M["btn_o"], size=(0.034, 0.028, 0.010))
+decor_keys("commandarm_key_orange", [(5.222, CA_Y + 0.030, KZ)], m=M["btn_o"], size=(0.034, 0.028, 0.010))
+decor_keys("commandarm_keys_hvac", [(5.163 - r * 0.028, CA_Y - 0.072 + c * 0.017, KZ) for r in range(3) for c in range(5)],
+           size=(0.024, 0.015, 0.007))
+# inboard keypad (2 x 3) + park
+ib = [(5.170, CA_Y + 0.062), (5.170, CA_Y + 0.031), (5.140, CA_Y + 0.062), (5.140, CA_Y + 0.031), (5.110, CA_Y + 0.062), (5.110, CA_Y + 0.031)]
+key("SW_tread_narrow", "ca_tread_narrower", "Tread adjust NARROWER", (*ib[0], KZ), M["btn_k"], size=(0.026, 0.026, 0.008))
+key("SW_tread_wide", "ca_tread_wider", "Tread adjust WIDER", (*ib[1], KZ), M["btn_k"], size=(0.026, 0.026, 0.008))
+key("SW_ladder", "ca_ladder", "Ladder raise/lower", (*ib[2], KZ), M["btn_k"], size=(0.026, 0.026, 0.008))
+decor_keys("commandarm_keys_inboard", [(*p, KZ) for p in ib[3:]], size=(0.026, 0.026, 0.008))
+key("BTN_park", "ca_park", "Park (P)", (5.068, CA_Y + 0.046, KZ), M["btn_o"], size=(0.030, 0.056, 0.010))
+
+# hydro handle at the front-inboard corner; lever swings fore/aft in the gate
+HH_PIV = Vector((5.360, CA_Y + 0.088, TOP))
 hh_piv = empty("PIV_hydro_handle", HH_PIV, cab, size=0.08)
-HEAD_C = HH_PIV + Vector((0.035, 0.0, 0.185))
-HEAD_ROT = Matrix.Rotation(math.radians(-32), 3, "Y")
+HEAD_ROT = Matrix.Rotation(math.radians(-38), 3, "Y")      # key face tilted up/back toward the operator
+HEAD_C = HH_PIV + Vector((-0.016, 0.0, 0.172))
 def hh(b):
-    b.cyl(HH_PIV + Vector((0, 0, 0.005)), 0.045, 0.03, M["int_dark"], segs=24)                  # gaiter
-    # orange grip: a curved column swept from the gaiter up into the head (rings normal to the sweep)
-    rings = []
-    for k in range(7):
-        t = k / 6
-        c = HH_PIV + Vector((0.035 * t * t, 0, 0.02 + 0.15 * t))
-        w, d = 0.022 + 0.010 * t, 0.026 + 0.010 * t
+    b.cyl(HH_PIV + Vector((0, 0, 0.006)), 0.020, 0.012, M["black"], segs=16)                    # gate boot
+    b.bar(HH_PIV, HH_PIV + Vector((0.0, 0, 0.12)), 0.026, M["black"])                            # stem
+    rings = []                                                                                   # orange finger grip, flows into the shell
+    for k in range(8):
+        t = k / 7
+        c = HH_PIV + Vector((-0.010 - 0.050 * t * t, 0, 0.045 + 0.105 * t))
+        w, d = 0.020 + 0.022 * t, 0.016 + 0.020 * t
         rings.append([c + Vector((d * math.cos(a), w * math.sin(a), 0)) for a in [2 * math.pi * i / 16 for i in range(16)]])
     b.loft(rings, M["btn_o"])
-    b.box(HEAD_C, (0.105, 0.078, 0.050), M["int_dark"], rot=HEAD_ROT)                           # black head
-    b.box(HEAD_C + HEAD_ROT @ Vector((0.0, 0.0, 0.026)), (0.095, 0.068, 0.004), M["black"], rot=HEAD_ROT)  # top face
-    for s in (1, -1):                                                                           # orange side covers
-        b.box(HEAD_C + HEAD_ROT @ Vector((-0.012, s * 0.041, -0.012)), (0.10, 0.006, 0.05), M["btn_o"], rot=HEAD_ROT)
-    b.box(HEAD_C + HEAD_ROT @ Vector((0.045, 0, -0.030)), (0.012, 0.030, 0.022), M["int_dark"], rot=HEAD_ROT)  # trigger
-o = part("CTL_hydro_handle", hh_piv, hh, bevel=0.004)
+    b.box(HEAD_C + HEAD_ROT @ Vector((-0.004, -0.002, -0.014)), (0.142, 0.100, 0.032), M["btn_o"], rot=HEAD_ROT)  # orange lower shell
+    b.box(HEAD_C + HEAD_ROT @ Vector((0.004, 0.002, 0.008)), (0.130, 0.090, 0.028), M["black"], rot=HEAD_ROT)      # black key face
+    b.box(HH_PIV + Vector((0.0, -0.016, 0.10)), (0.03, 0.006, 0.035), M["black"])               # side keypad bed
+o = part("CTL_hydro_handle", hh_piv, hh, bevel=0.007)
 tag(o, "control", "hh_lever", "Hydro handle")
-def head(u, v):    # point on the head's top face (u forward, v left)
-    return HEAD_C + HEAD_ROT @ Vector((u, v, 0.030))
+def head(u, v):    # point on the head's key face (u forward, v inboard)
+    return HEAD_C + HEAD_ROT @ Vector((u, v, 0.025))
 hh_buttons = [
-    # name, control id, label, (u, v), material, shape, size
-    ("BTN_master_spray", "hh_master_spray", "Master spray ON/OFF",  ( 0.034,  0.020), "btn_y", "tri",   (0.024, 0.024, 0.008)),
-    ("BTN_resume",       "hh_resume",       "Boom height resume",   ( 0.036, -0.022), "btn_y", "box",   (0.014, 0.014, 0.008)),
-    ("BTN_tilt_L_up",    "hh_tilt_L_up",    "Left wing tilt up",    ( 0.012,  0.022), "btn_k", "box",   (0.014, 0.014, 0.007)),
-    ("BTN_boom_raise",   "hh_boom_raise",   "Boom raise (centre)",  ( 0.012,  0.000), "btn_k", "box",   (0.014, 0.014, 0.007)),
-    ("BTN_tilt_R_up",    "hh_tilt_R_up",    "Right wing tilt up",   ( 0.012, -0.022), "btn_k", "box",   (0.014, 0.014, 0.007)),
-    ("BTN_tilt_L_down",  "hh_tilt_L_down",  "Left wing tilt down",  (-0.008,  0.022), "btn_k", "box",   (0.014, 0.014, 0.007)),
-    ("BTN_boom_lower",   "hh_boom_lower",   "Boom lower (centre)",  (-0.008,  0.000), "btn_k", "box",   (0.014, 0.014, 0.007)),
-    ("BTN_tilt_R_down",  "hh_tilt_R_down",  "Right wing tilt down", (-0.008, -0.022), "btn_k", "box",   (0.014, 0.014, 0.007)),
-    ("BTN_range_up",     "hh_range_up",     "Speed range up",       (-0.028,  0.012), "btn_k", "box",   (0.014, 0.014, 0.007)),
-    ("BTN_range_down",   "hh_range_down",   "Speed range down",     (-0.028, -0.012), "btn_k", "box",   (0.014, 0.014, 0.007)),
+    ("BTN_master_spray", "hh_master_spray", "Master spray ON/OFF",  ( 0.046,  0.024), "btn_y", (0.026, 0.026, 0.008)),
+    ("BTN_tilt_L_up",    "hh_tilt_L_up",    "Left wing tilt up",    ( 0.016,  0.024), "btn_k", (0.018, 0.018, 0.007)),
+    ("BTN_boom_raise",   "hh_boom_raise",   "Boom raise (centre)",  ( 0.016,  0.002), "btn_k", (0.018, 0.018, 0.007)),
+    ("BTN_tilt_R_up",    "hh_tilt_R_up",    "Right wing tilt up",   ( 0.016, -0.020), "btn_k", (0.018, 0.018, 0.007)),
+    ("BTN_tilt_L_down",  "hh_tilt_L_down",  "Left wing tilt down",  (-0.007,  0.024), "btn_k", (0.018, 0.018, 0.007)),
+    ("BTN_boom_lower",   "hh_boom_lower",   "Boom lower (centre)",  (-0.007,  0.002), "btn_k", (0.018, 0.018, 0.007)),
+    ("BTN_tilt_R_down",  "hh_tilt_R_down",  "Right wing tilt down", (-0.007, -0.020), "btn_k", (0.018, 0.018, 0.007)),
+    ("BTN_resume",       "hh_resume",       "Boom height resume",   (-0.034, -0.026), "btn_y", (0.016, 0.016, 0.007)),
 ]
-for name, ref, label, (u, v), mm, shape, size in hh_buttons:
-    key(name, ref, label, head(u, v), M[mm], size=size, parent=hh_piv, rot=HEAD_ROT, shape=shape)
-part("hydro_handle_thumbpad", hh_piv, lambda b: b.cyl(head(-0.047, 0.0), 0.012, 0.010, M["btn_k"], segs=20, rot=HEAD_ROT))
+for name, ref, label, (u, v), mm, size in hh_buttons:
+    key(name, ref, label, head(u, v), M[mm], size=size, parent=hh_piv, rot=HEAD_ROT)
+def hh_decor(b):
+    for u, v in ((0.046, -0.004), (0.046, -0.028), (-0.034, -0.002)):                            # HMS, F, AUTO keys
+        b.box(head(u, v), (0.018, 0.018, 0.007), M["btn_k"], rot=HEAD_ROT)
+    b.cyl(head(-0.036, 0.024), 0.014, 0.008, M["btn_k"], segs=24, rot=HEAD_ROT)                 # round 'E' rocker
+for name, ref, label, dz in (("BTN_range_up", "hh_range_up", "Speed range up", 0.112), ("BTN_range_down", "hh_range_down", "Speed range down", 0.090)):
+    key(name, ref, label, HH_PIV + Vector((0.0, -0.020, dz)), M["btn_k"], size=(0.012, 0.004, 0.012), parent=hh_piv, glyph=False)
+part("hydro_handle_keys", hh_piv, hh_decor, bevel=0.0015)
 
 # shift the whole cab (shell, interior, controls) into its real position over the front axle
 cab.location.x += CAB_DX
@@ -1129,7 +1164,10 @@ if DO_RENDER:
 
     def look(pos, tgt, lens=35):
         cam.location = pos
-        cam.rotation_euler = (Vector(tgt) - Vector(pos)).to_track_quat("-Z", "Y").to_euler()
+        if tgt is None:                       # straight down, machine-forward at the top of the frame
+            cam.rotation_euler = (0, 0, -math.pi / 2)
+        else:
+            cam.rotation_euler = (Vector(tgt) - Vector(pos)).to_track_quat("-Z", "Y").to_euler()
         cam.data.lens = lens
 
     def pose(**kw):
@@ -1147,7 +1185,8 @@ if DO_RENDER:
         ("render_side.png",      TRANSPORT, ((2.6, 20, 2.2), (2.6, 0, 2.0), 40)),
         ("render_rear.png",      TRANSPORT, ((-11, -4.5, 2.6), (0, 0, 2.0), 35)),
         ("render_field.png",     dict(boom_height=0.76), ((-13, 21, 6.5), (-1, 4, 1.2), 30)),
-        ("render_commandarm.png", dict(boom_height=0.76, cab_door=0), ((3.72, 0.02, 3.48), (4.20, -0.40, 3.02), 26)),
+        ("render_commandarm.png", dict(boom_height=0.76, cab_door=0), ((3.72, 0.06, 3.50), (4.15, -0.38, 3.02), 26)),
+        ("render_commandarm_top.png", dict(boom_height=0.76), ((3.93, -0.40, 3.80), None, 20)),
         ("render_service.png",   dict(hood=60, ladder=0, cab_door=75, eductor=85, tread=4.06, steer=25, boom_height=1.6), ((10.5, 7.5, 3.8), (3.8, 0.4, 2.0), 30)),
     ]
     only = os.environ.get("ONLY")
