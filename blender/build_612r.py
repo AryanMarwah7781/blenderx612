@@ -915,6 +915,8 @@ key("SW_tread_wide", "ca_tread_wider", "Tread adjust WIDER", (*ib[1], KZ), M["bt
 key("SW_ladder", "ca_ladder", "Ladder raise/lower", (*ib[2], KZ), M["btn_k"], size=(0.026, 0.026, 0.008))
 decor_keys("commandarm_keys_inboard", [(*p, KZ) for p in ib[3:]], size=(0.026, 0.026, 0.008))
 key("BTN_park", "ca_park", "Park (P)", (5.068, CA_Y + 0.046, KZ), M["btn_o"], size=(0.030, 0.056, 0.010))
+# 4th orange key at the outboard end of the rear key row (as in the photos; function not yet identified)
+decor_keys("commandarm_key_orange_rear", [(5.068, CA_Y - 0.045, KZ)], m=M["btn_o"], size=(0.030, 0.050, 0.010))
 
 # hydro handle at the front-inboard corner; lever swings fore/aft in the gate
 HH_PIV = Vector((5.360, CA_Y + 0.088, TOP))
