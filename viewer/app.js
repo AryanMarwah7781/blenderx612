@@ -88,6 +88,17 @@ model.traverse(o => {
 });
 const ROOT = N["SPRAYER_612R"];
 const REST = {};
+// hydraulic actuators: barrel + rod pairs that aim at each other (list baked into the root's glTF extras)
+const ACTS = (() => { try { return JSON.parse(ROOT.userData.actuators || "[]"); } catch { return []; } })()
+  .map(a => ({ ...a, b: N[a.body], r: N[a.rod] })).filter(a => a.b && a.r);
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
+function aimActuators() {
+  ROOT.updateMatrixWorld(true);
+  for (const a of ACTS) {
+    a.b.getWorldPosition(_va); a.r.getWorldPosition(_vb);
+    a.b.lookAt(_vb); a.r.lookAt(_va);
+  }
+}
 for (const [name, o] of Object.entries(N)) if (name.startsWith("PIV_")) REST[name] = { p: o.position.clone(), q: o.quaternion.clone() };
 
 // ------------------------------------------------------------------------------------ live display (canvas on DSP_screen)
@@ -177,6 +188,7 @@ function applyJoints() {
   ch.quaternion.setFromEuler(new THREE.Euler(st.roll, 0, st.pitch, "XYZ"));
   ROOT.position.set(st.x, 0, st.z);
   ROOT.quaternion.setFromAxisAngle(AXIS.z, st.yaw);
+  aimActuators();
 }
 
 // ------------------------------------------------------------------------------------ simulation step

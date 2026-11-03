@@ -1222,6 +1222,87 @@ for side, sfx in ((1, "L"), (-1, "R")):
         b.bar((BOOM_X - 0.05, s * (Y_END - 0.05), BOOM_CHORD_Z - 0.35), (BOOM_X - 0.05, s * (Y_END - 0.05), BOOM_CHORD_Z + 0.25), 0.06, M["yellow"])  # end guard
     part(f"boom_tip_{sfx}", tip, tip_fn)
 
+# ============================================================================= HYDRAULIC ACTUATORS + DETAIL
+# Each actuator is a barrel (on pivot A) and a rod (on pivot B) that point at each other. They extend
+# and retract as the joints move. Blender keeps them aimed with Damped Track constraints; the viewer
+# re-aims them every frame from spec["actuators"]. Geometry runs along local -Y (= glTF +Z, so
+# three.js lookAt() works directly).
+ACTUATORS = []
+def actuator(name, parA, A, parB, B, body_len, rod_len, r=0.045, m_body=None):
+    A, B = Vector(A), Vector(B)
+    d = (B - A).normalized()
+    q = Vector((0, -1, 0)).rotation_difference(d)
+    def body(b):
+        b.cyl(A + Vector((0, -body_len / 2, 0)), r, body_len, m_body or M["green"], axis="Y", segs=20)
+        b.cyl(A, r * 0.9, r * 2.2, M["dsteel"], axis="X", segs=14)                          # clevis pin
+        b.cyl(A + Vector((0, -body_len, 0)), r * 1.15, 0.03, M["dsteel"], axis="Y", segs=20)  # gland
+        b.tube(A + Vector((0, -0.05, r)), A + Vector((0, -body_len + 0.06, r * 1.6)), 0.008, M["hose"])  # hose
+    def rod(b):
+        b.cyl(B + Vector((0, -rod_len / 2, 0)), r * 0.5, rod_len, M["steel"], axis="Y", segs=16)
+        b.cyl(B, r * 0.8, r * 2.0, M["dsteel"], axis="X", segs=14)
+    ob = part(f"ACT_{name}_body", parA, body, origin=A)
+    orr = part(f"ACT_{name}_rod", parB, rod, origin=B)
+    for o, tgt, dd in ((ob, orr, d), (orr, ob, -d)):
+        o.rotation_mode = "QUATERNION"
+        o.rotation_quaternion = Vector((0, -1, 0)).rotation_difference(dd)
+        c = o.constraints.new("DAMPED_TRACK")
+        c.target, c.track_axis = tgt, "TRACK_NEGATIVE_Y"
+    ACTUATORS.append({"id": name, "body": ob.name, "rod": orr.name})
+
+OBJ = bpy.data.objects
+# boom lift (parallel-link arms): chassis tower -> upper lift arm
+for s_ in (1, -1):
+    actuator(f"lift_{'L' if s_ > 0 else 'R'}", chassis, (-0.50, s_ * 0.25, 1.30), OBJ["PIV_lift_upper"],
+             UPPER_PIV + Vector((-0.75, s_ * 0.25, -0.03)), 0.85, 0.95, r=0.075)
+# wing fold + wing tilt
+for s_, sfx in ((1, "L"), (-1, "R")):
+    hinge = Vector((BOOM_X, s_ * Y_HINGE, BOOM_CHORD_Z + 0.35))
+    actuator(f"fold_{sfx}", OBJ[f"PIV_tilt_{sfx}"], hinge + Vector((0.30, -s_ * 0.55, 0.62)),
+             OBJ[f"PIV_fold_{sfx}"], hinge + Vector((0.05, s_ * 0.75, 0.62)), 0.70, 0.75, r=0.065)
+    actuator(f"tilt_{sfx}", OBJ["PIV_boom_center"], Vector((BOOM_X - 0.30, s_ * 0.80, CF_TOP - 0.10)),
+             OBJ[f"PIV_tilt_{sfx}"], hinge + Vector((-0.30, s_ * 0.20, 0.50)), 0.40, 0.45, r=0.04)
+# ladder lift + hood gas struts
+actuator("ladder", chassis, (5.35, 1.05, 2.05), lad_piv, (5.65, 1.05, 1.62), 0.35, 0.45, r=0.03)
+part("ladder_cyl_bracket", lad_piv, lambda b: b.box((5.65, 1.12, 1.62), (0.06, 0.16, 0.05), M["green"]))
+for s_ in (1, -1):
+    actuator(f"hood_strut_{'L' if s_ > 0 else 'R'}", chassis, (5.35, s_ * 0.50, 2.25), hood_piv, (5.95, s_ * 0.50, 2.80),
+             0.70, 0.75, r=0.016, m_body=M["black"])
+
+# BoomTrac ultrasonic height sensors on brackets ahead of the boom (centre, inner wings, tips)
+def sensor(b, y, z_chord=BOOM_CHORD_Z):
+    b.box((BOOM_X + 0.20, y, z_chord + 0.02), (0.40, 0.04, 0.04), M["green"])                    # bracket
+    b.cyl((BOOM_X + 0.38, y, z_chord - 0.06), 0.045, 0.13, M["black"], segs=18)                  # sensor body
+    b.cyl((BOOM_X + 0.38, y, z_chord - 0.13), 0.040, 0.01, M["dsteel"], segs=18)                 # transducer face
+part("boomtrac_sensor_C", center, lambda b: sensor(b, 0.0))
+for s_, sfx in ((1, "L"), (-1, "R")):
+    part(f"boomtrac_sensor_{sfx}1", OBJ[f"PIV_fold_{sfx}"], lambda b, s_=s_: sensor(b, s_ * (Y_HINGE + 5.2)))
+    part(f"boomtrac_sensor_{sfx}2", OBJ[f"PIV_tip_{sfx}"], lambda b, s_=s_: sensor(b, s_ * (Y_END - 1.0)))
+
+# engine bay detail: belt drive, aftertreatment, coolant tank, intake duct
+def engine_detail(b):
+    fx = 6.38
+    for y, z, r in ((0.0, 1.95, 0.11), (0.0, 2.32, 0.15), (-0.22, 2.20, 0.07), (0.20, 2.12, 0.06)):   # crank, fan, alt, idler
+        b.cyl((fx, y, z), r, 0.04, M["dsteel"], axis="X", segs=24)
+    pts = [(0.0, 1.95, 0.11), (-0.22, 2.20, 0.07), (0.0, 2.32, 0.15), (0.20, 2.12, 0.06)]
+    for (y1, z1, _), (y2, z2, _) in zip(pts, pts[1:] + pts[:1]):                                       # serpentine belt
+        b.tube((fx + 0.005, y1, z1), (fx + 0.005, y2, z2), 0.012, M["black"], segs=6)
+    b.cyl((5.35, 0.35, 2.45), 0.14, 0.50, M["steel"], axis="X", segs=24)                              # DOC/DPF/SCR can
+    b.tube((5.10, 0.35, 2.45), (5.10, 0.50, 2.80), 0.06, M["steel"])                                  # to the stack
+    b.box((5.75, -0.25, 2.66), (0.28, 0.20, 0.16), M["white"])                                        # coolant expansion tank
+    b.cyl((5.75, -0.25, 2.76), 0.035, 0.03, M["black"])
+    b.tube((5.95, -0.38, 2.48), (6.30, -0.30, 2.40), 0.07, M["black"], segs=14)                      # intake duct
+part("engine_detail", chassis, engine_detail)
+
+# warning decals (ISO-style yellow/white labels) where the real machine carries them
+def decals(b):
+    for (x, y, z, w, h, nrm) in ((2.80, 0.86, 2.30, 0.12, 0.08, "y"), (1.30, -0.86, 2.30, 0.12, 0.08, "y"),
+                                 (5.30, 1.25, 1.85, 0.10, 0.07, "y"), (-0.66, 0.40, 1.95, 0.10, 0.10, "x")):
+        if nrm == "y":
+            b.box((x, y, z), (w, 0.003, h), M["yellow"]); b.box((x, y + math.copysign(0.002, y), z + h * 0.18), (w * 0.9, 0.002, h * 0.35), M["black"])
+        else:
+            b.box((x, y, z), (0.003, w, h), M["yellow"]); b.box((x - 0.002, y, z + h * 0.18), (0.002, w * 0.9, h * 0.35), M["black"])
+part("warning_decals", chassis, decals)
+
 # ============================================================================= DRIVERS (Blender-side posing)
 def add_prop(name, j):
     root[name] = float(j["default"])
@@ -1272,6 +1353,8 @@ for j in SPEC["joints"]:
         for node, axs in j["nodes"].items():
             sign = -1 if axs.endswith("-") else 1
             drive(node, "rotation_euler", AX[axs[0]], f"{'-' if sign < 0 else ''}radians({jid})", [jid])
+
+root["actuators"] = json.dumps(ACTUATORS)
 
 # ============================================================================= metadata on every mesh
 for o in COLL.objects:
@@ -1413,6 +1496,8 @@ if DO_RENDER:
         ("render_commandarm_top.png", dict(boom_height=0.76), ((3.93, -0.40, 3.80), None, 20)),
         ("render_hydro_handle.png", dict(boom_height=0.76), ((3.86, -0.02, 3.40), (4.075, -0.24, 3.22), 45)),
         ("render_hydro_side.png",   dict(boom_height=0.76), ((3.86, 0.20, 3.18), (4.06, -0.23, 3.15), 34)),
+        ("render_boom_detail.png", dict(boom_height=1.2), ((-4.2, 4.2, 3.4), (-1.9, 1.3, 1.9), 28)),
+        ("render_boom_folding.png", dict(boom_height=2.3, fold_L=45, outer_L=178), ((-4.6, 5.5, 4.2), (-1.0, 2.0, 2.2), 28)),
         ("render_service.png",   dict(hood=60, ladder=0, cab_door=75, eductor=85, tread=4.06, steer=25, boom_height=1.6), ((10.5, 7.5, 3.8), (3.8, 0.4, 2.0), 30)),
     ]
     only = os.environ.get("ONLY")
