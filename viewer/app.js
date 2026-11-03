@@ -14,6 +14,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const BASE = new URL("..", import.meta.url);
 const SPEC = await (await fetch(new URL("spec/612r_spec.json", BASE))).json();
@@ -40,18 +42,30 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xbfd3e6);
-scene.fog = new THREE.Fog(0xbfd3e6, 120, 380);
+scene.fog = new THREE.Fog(0xc9d6e3, 140, 420);
+renderer.toneMappingExposure = 0.9;
 const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 1000);
 const orbit = new OrbitControls(camera, canvas);
 orbit.enableDamping = true;
 orbit.maxPolarAngle = Math.PI * 0.495;
-scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+// image-based lighting: real outdoor sky (Poly Haven CC0, viewer/env/), room environment as a fallback
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.6;
-scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x6b5a45, 1.4));
-const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+new RGBELoader().loadAsync(new URL("viewer/env/sky.hdr", BASE).href).then(hdr => {
+  hdr.mapping = THREE.EquirectangularReflectionMapping;
+  scene.environment = pmrem.fromEquirectangular(hdr).texture;
+  scene.background = hdr;
+  scene.backgroundBlurriness = 0.02;
+  scene.environmentIntensity = 1.0;
+  scene.backgroundIntensity = 0.9;
+}).catch(e => console.warn("sky.hdr not loaded:", e));
+scene.add(new THREE.HemisphereLight(0xe8f0ff, 0x6b5a45, 0.6));
+const sun = new THREE.DirectionalLight(0xfff4e0, 3.0);
 sun.position.set(30, 50, 20);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 3;
 Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 150 });
 scene.add(sun, sun.target);
 
@@ -59,13 +73,44 @@ scene.add(sun, sun.target);
 let rough = false;
 const groundH = (x, z) => !rough ? 0 :
   0.06 * Math.sin(x * 0.45) * Math.cos(z * 0.38) + 0.035 * Math.sin(x * 1.3 + z * 0.7) + 0.05 * Math.sin(z * 0.21 + 1.3);
-const gtex = (() => {
-  const c = document.createElement("canvas"); c.width = c.height = 256;
-  const g = c.getContext("2d"); g.fillStyle = "#6b5338"; g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 8; i++) { g.fillStyle = "#4f7d2e"; g.fillRect(0, i * 32 + 10, 256, 12); }   // 30 in crop rows along X
-  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(66, 66);
+const gtex = (() => {   // soil: noisy clods with darker 30 in row furrows
+  const c = document.createElement("canvas"); c.width = c.height = 512;
+  const g = c.getContext("2d"); g.fillStyle = "#6e5639"; g.fillRect(0, 0, 512, 512);
+  let r = 7; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 9000; i++) { const v = 70 + rnd() * 60; g.fillStyle = `rgba(${v + 40},${v + 15},${v - 20},${0.25 + rnd() * 0.3})`;
+    g.fillRect(rnd() * 512, rnd() * 512, 1 + rnd() * 3, 1 + rnd() * 3); }
+  for (let i = 0; i < 8; i++) { g.fillStyle = "rgba(55,40,25,0.35)"; g.fillRect(0, i * 64 + 26, 512, 12); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(51, 51);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 })();
+// crop rows: instanced young soybean/corn-like plants on 30 in (0.762 m) rows around the field centre
+function makeCrop() {
+  // one plant = 6 arching strap leaves (young corn), merged into a single geometry
+  const leaves = [];
+  for (let i = 0; i < 6; i++) {
+    const g = new THREE.PlaneGeometry(0.035, 0.30, 1, 4);
+    const pa = g.attributes.position;
+    for (let k = 0; k < pa.count; k++) { const y = pa.getY(k) + 0.15; pa.setY(k, y); pa.setZ(k, -0.9 * y * y); }  // arch outward
+    g.rotateX(-0.25 - (i % 2) * 0.25).rotateY(i * 1.05).translate(0, 0.02, 0);
+    leaves.push(g);
+  }
+  const leaf = mergeGeometries(leaves); leaf.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x5a8f2e, roughness: 0.75, side: THREE.DoubleSide });
+  const rows = 160, per = 220, sp = 0.762, step = 0.55;
+  const crop = new THREE.InstancedMesh(leaf, mat, rows * per);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+  let k = 0, r = 3; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < rows; i++) for (let j = 0; j < per; j++) {
+    pos.set(-60 + j * step + rnd() * 0.15, 0, (i - rows / 2) * sp + (rnd() - 0.5) * 0.06);
+    q.setFromEuler(new THREE.Euler((rnd() - 0.5) * 0.3, rnd() * 6.28, (rnd() - 0.5) * 0.3));
+    const h = 0.8 + rnd() * 0.5; sc.set(h, h * (0.9 + rnd() * 0.3), h);
+    crop.setMatrixAt(k++, m.compose(pos, q, sc));
+  }
+  crop.castShadow = false; crop.receiveShadow = true;
+  return crop;
+}
+const crop = makeCrop();
+scene.add(crop);
 const groundGeo = new THREE.PlaneGeometry(400, 400, 200, 200).rotateX(-Math.PI / 2);
 const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: gtex, roughness: 1 }));
 ground.receiveShadow = true;

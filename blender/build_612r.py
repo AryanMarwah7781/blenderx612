@@ -119,6 +119,29 @@ def mat(name, rgb, metal=0.0, rough=0.5, alpha=1.0, emit=None, coat=0.0, emit_st
     m.metallic, m.roughness = metal, rough
     return m
 
+def add_dirt(m, z0=0.4, z1=1.9, col=(0.32, 0.25, 0.17), amount=0.55):
+    """Dust that is heavier low on the machine (Cycles/EEVEE only; the viewer uses the base colour)."""
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    base = bsdf.inputs["Base Color"].default_value[:]
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    mr = nt.nodes.new("ShaderNodeMapRange")
+    mr.inputs["From Min"].default_value, mr.inputs["From Max"].default_value = z1, z0
+    noise = nt.nodes.new("ShaderNodeTexNoise"); noise.inputs["Scale"].default_value = 6.0
+    mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY"
+    mul2 = nt.nodes.new("ShaderNodeMath"); mul2.operation = "MULTIPLY"; mul2.inputs[1].default_value = amount
+    mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
+    mix.inputs[6].default_value = base; mix.inputs[7].default_value = (*col, 1)
+    nt.links.new(geo.outputs["Position"], sep.inputs[0])
+    nt.links.new(sep.outputs["Z"], mr.inputs["Value"])
+    nt.links.new(mr.outputs["Result"], mul.inputs[0])
+    nt.links.new(noise.outputs["Fac"], mul.inputs[1])
+    nt.links.new(mul.outputs[0], mul2.inputs[0])
+    nt.links.new(mul2.outputs[0], mix.inputs[0])
+    nt.links.new(mix.outputs[2], bsdf.inputs["Base Color"])
+    return m
+
 def srgb(h):
     c = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
     return tuple(((x + 0.055) / 1.055) ** 2.4 if x > 0.04045 else x / 12.92 for x in c)
@@ -1458,6 +1481,15 @@ if DO_RENDER:
     nt.links.new(sky.outputs["Color"], nt.nodes["Background"].inputs["Color"])
     nt.nodes["Background"].inputs["Strength"].default_value = 0.22
     scene.view_settings.exposure = -0.35
+    for _k, _amt in (("JD_Green_Paint", 0.5), ("JD_Green_Cast", 0.6), ("JD_Yellow_Paint", 0.45), ("Tire_Rubber", 0.7),
+                     ("Black_Plastic", 0.4), ("Dark_Steel", 0.4)):
+        add_dirt(bpy.data.materials[_k], amount=_amt)        # render-only: keeps the exported glTF colours clean
+    hdr = os.path.join(ROOT, "viewer", "env", "sky.hdr")          # real sky (Poly Haven CC0), same as the viewer
+    if os.path.exists(hdr):
+        env = nt.nodes.new("ShaderNodeTexEnvironment")
+        env.image = bpy.data.images.load(hdr)
+        nt.links.new(env.outputs["Color"], nt.nodes["Background"].inputs["Color"])
+        nt.nodes["Background"].inputs["Strength"].default_value = 0.55
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
     sun.data.energy = 3.2
     sun.data.angle = math.radians(0.6)
