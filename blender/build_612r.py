@@ -1152,6 +1152,7 @@ for piv, nm in ((lift_u, "lift_arm_upper"), (lift_l, "lift_arm_lower")):
 
 center = empty("PIV_boom_center", (BOOM_X, 0, UPPER_PIV.z), lift_u)
 CF_TOP = UPPER_PIV.z + 0.45
+NOZZLES = {}   # pivot name -> nozzle tip positions in that pivot's local frame (Blender axes), for the viewer's spray
 def center_frame(b):
     zb = BOOM_CHORD_Z
     xb = BOOM_X - 0.30
@@ -1177,6 +1178,7 @@ def center_frame(b):
             y = sg * (k + 0.5) * S["nozzle_spacing_m"]
             b.box((xb - 0.12, y, zb - 0.07), (0.05, 0.04, 0.08), M["black"])
             b.box((xb - 0.12, y, zb - 0.12), (0.025, 0.025, 0.03), M["orange"])
+            NOZZLES.setdefault("PIV_boom_center", []).append(Vector((xb - 0.12, y, zb - 0.135)) - WORLD["PIV_boom_center"])
 part("boom_center_frame", center, center_frame, bevel=0.01)
 o = part("SVC_boom_strainer", center, lambda b: b.cyl((BOOM_X + 0.05, -0.30, BOOM_CHORD_Z + 0.30), 0.06, 0.22, M["white"]).cyl((BOOM_X + 0.05, -0.30, BOOM_CHORD_Z + 0.44), 0.07, 0.04, M["orange"]))
 tag(o, "service_point", "sp_boom_strainer", "Boom strainer (80 mesh)")
@@ -1220,6 +1222,7 @@ def truss(b, side, y0, y1, h0, h1, d0=0.48, d1=0.30, chord=0.07):
         d = d0 + (d1 - d0) * (y - y0) / L
         b.box(P(y, -d - 0.07, -0.07), (0.05, 0.04, 0.08), M["black"])      # ExactApply body
         b.box(P(y, -d - 0.07, -0.12), (0.025, 0.025, 0.03), M["orange"])   # tip
+        NOZZLES.setdefault(b.parent.name, []).append(P(y, -d - 0.07, -0.135) - WORLD[b.parent.name])
         k += 1
     return b
 
@@ -1265,7 +1268,10 @@ def actuator(name, parA, A, parB, B, body_len, rod_len, r=0.045, m_body=None):
         b.cyl(B, r * 0.8, r * 2.0, M["dsteel"], axis="X", segs=14)
     ob = part(f"ACT_{name}_body", parA, body, origin=A)
     orr = part(f"ACT_{name}_rod", parB, rod, origin=B)
-    for o, tgt, dd in ((ob, orr, d), (orr, ob, -d)):
+    # aim at anchor empties (not at each other) so Blender's dependency graph has no cycle
+    anA = empty(f"ACT_{name}_anchorA", A, parA, size=0.03)
+    anB = empty(f"ACT_{name}_anchorB", B, parB, size=0.03)
+    for o, tgt, dd in ((ob, anB, d), (orr, anA, -d)):
         o.rotation_mode = "QUATERNION"
         o.rotation_quaternion = Vector((0, -1, 0)).rotation_difference(dd)
         c = o.constraints.new("DAMPED_TRACK")
@@ -1378,6 +1384,7 @@ for j in SPEC["joints"]:
             drive(node, "rotation_euler", AX[axs[0]], f"{'-' if sign < 0 else ''}radians({jid})", [jid])
 
 root["actuators"] = json.dumps(ACTUATORS)
+root["nozzles"] = json.dumps({k: [[round(v.x, 4), round(v.y, 4), round(v.z, 4)] for v in vs] for k, vs in NOZZLES.items()})
 
 # ============================================================================= metadata on every mesh
 for o in COLL.objects:

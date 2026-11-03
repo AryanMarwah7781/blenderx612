@@ -137,6 +137,87 @@ const REST = {};
 const ACTS = (() => { try { return JSON.parse(ROOT.userData.actuators || "[]"); } catch { return []; } })()
   .map(a => ({ ...a, b: N[a.body], r: N[a.rod] })).filter(a => a.b && a.r);
 const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
+// ---- spray: flat-fan sheets under every nozzle (positions baked into the root's glTF extras)
+const NOZ = (() => { try { return JSON.parse(ROOT.userData.nozzles || "{}"); } catch { return {}; } })();
+const fanTex = (() => {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 128;
+  const g = c.getContext("2d");
+  const gr = g.createLinearGradient(0, 0, 0, 128);
+  gr.addColorStop(0, "rgba(255,255,255,0.95)"); gr.addColorStop(0.5, "rgba(235,245,255,0.45)"); gr.addColorStop(1, "rgba(235,245,255,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 128);
+  g.globalCompositeOperation = "destination-out";
+  for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(0,0,0,${0.15 + Math.random() * 0.35})`; g.fillRect(Math.random() * 64, 0, 1 + Math.random() * 2, 128); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; return t;
+})();
+const fanGeo = (() => {   // triangle from the tip (0,0,0) down to y = -1, spread along local z (the boom axis): ~100 deg fan
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, -1, -1.15, 0, -1, 1.15], 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute([0.5, 0, 0, 1, 1, 1], 2));
+  return g;
+})();
+const fanMat = new THREE.MeshBasicMaterial({ map: fanTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0.55 });
+const FANS = [];
+for (const [node, pts] of Object.entries(NOZ)) {
+  if (!N[node]) continue;
+  const im = new THREE.InstancedMesh(fanGeo, fanMat, pts.length);
+  im.frustumCulled = false; im.visible = false; im.userData.pts = pts.map(([x, y, z]) => new THREE.Vector3(x, z, -y));
+  N[node].add(im); FANS.push(im);
+}
+let fanH = -1;
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _sc = new THREE.Vector3();
+function updateSpray(dt) {
+  const on = st.spray_on && boomUnfolded();
+  const h = Math.max(0.2, J.boom_height - 0.05);
+  for (const im of FANS) {
+    im.visible = on;
+    if (on && Math.abs(h - fanH) > 1e-3) {
+      im.userData.pts.forEach((p, i) => { _sc.set(1, h, h); im.setMatrixAt(i, _m4.compose(p, _q, _sc)); });
+      im.instanceMatrix.needsUpdate = true;
+    }
+  }
+  if (on) { fanH = h; fanTex.offset.x = (fanTex.offset.x + dt * 3.7) % 1; fanMat.opacity = 0.45 + 0.1 * Math.sin(clock.elapsedTime * 47); }
+  else fanH = -1;
+}
+
+// ---- sound: synthesised engine (6-cyl firing frequency follows rpm), hydraulic whine, alarm beeps
+let audio = null, muted = false;
+function initAudio() {
+  if (audio) return;
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const master = ac.createGain(); master.gain.value = 0.6; master.connect(ac.destination);
+    const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420; lp.Q.value = 3;
+    const eg = ac.createGain(); eg.gain.value = 0.0; lp.connect(eg); eg.connect(master);
+    const o1 = ac.createOscillator(); o1.type = "sawtooth"; o1.connect(lp); o1.start();
+    const o2 = ac.createOscillator(); o2.type = "square"; o2.connect(lp); o2.start();
+    const hg = ac.createGain(); hg.gain.value = 0; hg.connect(master);
+    const hf = ac.createBiquadFilter(); hf.type = "bandpass"; hf.frequency.value = 900; hf.Q.value = 8; hf.connect(hg);
+    const ho = ac.createOscillator(); ho.type = "triangle"; ho.frequency.value = 880; ho.connect(hf); ho.start();
+    audio = { ac, master, eg, o1, o2, hg, ho, lp };
+  } catch (e) { audio = null; }
+}
+function beep() {
+  if (!audio || muted) return;
+  const { ac, master } = audio, o = ac.createOscillator(), g = ac.createGain();
+  o.type = "square"; o.frequency.value = 2400; g.gain.value = 0.0001; o.connect(g); g.connect(master);
+  const t = ac.currentTime;
+  for (let i = 0; i < 3; i++) { g.gain.setValueAtTime(0.06, t + i * 0.18); g.gain.setValueAtTime(0.0001, t + i * 0.18 + 0.09); }
+  o.start(t); o.stop(t + 0.6);
+}
+const engineRpm = () => (st.park && Math.abs(st.speed) < 0.1 && J.hydro_handle === 0) ? 900 : [0, 1300, 1700, 2100][st.throttle] + Math.abs(st.speed) * 12;
+function updateAudio() {
+  if (!audio) return;
+  const { ac, eg, o1, o2, hg, ho, lp } = audio, t = ac.currentTime, rpm = engineRpm();
+  const fire = rpm / 60 * 3;                                   // 6-cylinder 4-stroke: 3 firings per revolution
+  o1.frequency.setTargetAtTime(fire, t, 0.25); o2.frequency.setTargetAtTime(fire / 2, t, 0.25);
+  lp.frequency.setTargetAtTime(300 + rpm * 0.18, t, 0.3);
+  eg.gain.setTargetAtTime(muted ? 0 : 0.10 + rpm / 21000, t, 0.2);
+  hg.gain.setTargetAtTime(muted || !st.hydMoving ? 0 : 0.035, t, 0.08);
+  ho.frequency.setTargetAtTime(820 + rpm * 0.05, t, 0.2);
+}
+addEventListener("pointerdown", initAudio, { once: true });
+addEventListener("keydown", initAudio, { once: true });
+
 function aimActuators() {
   ROOT.updateMatrixWorld(true);
   for (const a of ACTS) {
@@ -147,15 +228,16 @@ function aimActuators() {
 for (const [name, o] of Object.entries(N)) if (name.startsWith("PIV_")) REST[name] = { p: o.position.clone(), q: o.quaternion.clone() };
 
 // ------------------------------------------------------------------------------------ live display (canvas on DSP_screen)
-const dspCanvas = document.createElement("canvas"); dspCanvas.width = 512; dspCanvas.height = 340;
+const dspCanvas = document.createElement("canvas"); dspCanvas.width = 1024; dspCanvas.height = 680;
 const dspTex = new THREE.CanvasTexture(dspCanvas); dspTex.colorSpace = THREE.SRGBColorSpace; dspTex.flipY = false;
-if (N["DSP_screen"]) N["DSP_screen"].material = new THREE.MeshBasicMaterial({ map: dspTex, toneMapped: false });
+if (N["DSP_screen"]) N["DSP_screen"].material = new THREE.MeshBasicMaterial({ map: dspTex, toneMapped: false, side: THREE.DoubleSide });
 
 // ------------------------------------------------------------------------------------ state
 const J = {}, T = {};                  // joint value / target
 for (const j of SPEC.joints) { J[j.id] = j.default; T[j.id] = j.default; }
 const st = {
   park: true, road_mode: false, spray_on: false, boomtrac: false, range: 3, throttle: 2,
+  tank_l: 3800, rate_lpha: 140, area_ha: 0, hydMoving: false,   // 140 L/ha = 15 gal/ac (spec page example rate)
   speed: 0,            // m/s
   x: 0, z: 0, yaw: 0,  // world pose of the rear-axle centre (three coordinates)
   heave: 0, pitch: 0, roll: 0, heaveV: 0, pitchV: 0, rollV: 0,
@@ -165,7 +247,7 @@ const st = {
 const RANGE_CAP_KPH = [0, 16, 25, SPECS.max_spray_speed_kph];   // ESTIMATE range caps; road = max transport
 const held = new Map();                 // controlId -> dir while a momentary switch is held
 let warnMsg = "", warnT = 0;
-const warn = (m) => { warnMsg = m; warnT = 3.5; };
+const warn = (m) => { if (m !== warnMsg || warnT <= 0) beep(); warnMsg = m; warnT = 3.5; };
 
 // ------------------------------------------------------------------------------------ interlocks
 const boomFolded = () => J.fold_L > 88 && J.fold_R > 88 && J.outer_L > 170 && J.outer_R > 170;
@@ -249,6 +331,7 @@ function step(dt) {
     if (why) { warn(why); T[c.joint] = J[c.joint]; continue; }
     T[c.joint] = dir > 0 ? JOINTS[c.joint].max : JOINTS[c.joint].min;
   }
+  let moving = false;
   for (const j of SPEC.joints) {
     if (j.id === "hydro_handle" || j.id === "steering_wheel") continue;
     const d = T[j.id] - J[j.id];
@@ -259,8 +342,10 @@ function step(dt) {
       if (why && !procRunning) { warn(why); T[j.id] = J[j.id]; continue; }
     }
     J[j.id] += Math.sign(d) * Math.min(Math.abs(d), j.rate * dt);
+    if (!["steer", "suspension"].includes(j.id)) moving = true;
     if (j.spring_return && Math.abs(J[j.id]) > 0 && T[j.id] !== 0 && Math.abs(J[j.id] - T[j.id]) < 1e-3) T[j.id] = 0;
   }
+  st.hydMoving = moving;
   // hydro handle → commanded speed (hydrostatic: first-order with accel limit)
   if (st.park && Math.abs(J.hydro_handle) > 1) warn("Park is engaged. Take the machine out of Park (P) to drive.");
   if (!st.park && J.ladder < 75 && Math.abs(J.hydro_handle) > 1) warn("Raise the ladder before you drive.");
@@ -318,6 +403,12 @@ function step(dt) {
   }
   // spray-on interlock (ASSUMED; check the OM)
   if (st.spray_on && (!boomUnfolded() || st.road_mode)) { st.spray_on = false; warn("Spray OFF: spraying requires the boom fully unfolded and Field mode."); }
+  // solution flow: rate x ground speed x boom width; tank drains, area counter climbs
+  if (st.spray_on && boomUnfolded() && Math.abs(st.speed) > 0.05) {
+    const ha = Math.abs(st.speed) * dt * SPECS.boom_length_m / 10000;
+    st.area_ha += ha; st.tank_l = Math.max(0, st.tank_l - ha * st.rate_lpha);
+    if (st.tank_l <= 0) { st.spray_on = false; warn("Solution tank empty: master spray OFF."); }
+  }
   if (warnT > 0) warnT -= dt;
 }
 
@@ -448,6 +539,7 @@ $("s_prev").onclick = () => showStep(procStep - 1);
 $("s_next").onclick = () => showStep(procStep + 1);
 $("s_close").onclick = () => { $("step").style.display = "none"; proc = null; autoPlay = false; highlight([]); procRunning = false; };
 $("s_auto").onclick = () => { autoPlay = !autoPlay; $("s_auto").classList.toggle("on", autoPlay); };
+$("mute").onclick = () => { initAudio(); muted = !muted; $("mute").textContent = muted ? "off" : "on"; };
 $("rough").onclick = () => { rough = !rough; $("rough").textContent = rough ? "on" : "off"; rebuildGround(); };
 
 // picking: mesh -> nearest ancestor that is a control or service point
@@ -509,27 +601,75 @@ function hud() {
   $("h_steer").textContent = `${J.steer.toFixed(1)}° · R ${Math.abs(J.steer) > 0.2 ? (SPECS.wheelbase_m / Math.sin(deg(Math.abs(J.steer)))).toFixed(1) + " m" : "∞"}`;
   $("h_spray").textContent = st.spray_on ? "ON" : "OFF";
   $("warn").textContent = warnT > 0 ? warnMsg : "";
-  const g = dspCanvas.getContext("2d");
-  g.fillStyle = "#0e1a10"; g.fillRect(0, 0, 512, 340);
-  g.fillStyle = "#367c2b"; g.fillRect(0, 0, 512, 38);
-  g.fillStyle = "#fff"; g.font = "bold 20px system-ui"; g.fillText("612R  ·  " + (st.road_mode ? "ROAD" : "FIELD"), 14, 26);
-  g.font = "bold 64px system-ui"; g.fillStyle = "#ffde00"; g.fillText(kph.toFixed(1), 18, 120);
-  g.font = "18px system-ui"; g.fillStyle = "#cfe8c8"; g.fillText("km/h   range " + st.range + (st.park ? "   PARK" : ""), 20, 148);
-  const rows = [["Boom", J.boom_height.toFixed(2) + " m"], ["Tread", (J.tread / 0.0254).toFixed(0) + " in"], ["Spray", st.spray_on ? "ON" : "OFF"], ["Fold", boomFolded() ? "Transport" : boomUnfolded() ? "Field" : "Moving"]];
-  rows.forEach(([k, v], i) => { g.fillStyle = "#9fb89a"; g.fillText(k, 280, 80 + i * 32); g.fillStyle = "#fff"; g.fillText(v, 380, 80 + i * 32); });
-  // boom section bar (11 sections on a 120 ft boom)
-  for (let i = 0; i < 11; i++) { g.fillStyle = st.spray_on ? "#2e9e44" : "#3a463a"; g.fillRect(20 + i * 43, 200, 38, 22); }
-  if (warnT > 0) { g.fillStyle = "#b3261e"; g.fillRect(0, 290, 512, 50); g.fillStyle = "#fff"; g.font = "15px system-ui"; g.fillText(warnMsg.slice(0, 60), 12, 320); }
+  drawDisplay();
   dspTex.needsUpdate = true;
+}
+
+// CommandCenter "Spraying" run page, laid out after the real display (Aryan's / dealer photos): green
+// title bar, target-rate column, tank + boom graphic with section status, BoomTrac card, speed, dock bar.
+function drawDisplay() {
+  const g = dspCanvas.getContext("2d"), W = 512, H = 340;
+  g.setTransform(dspCanvas.width / W, 0, 0, dspCanvas.height / H, 0, 0);
+  const kph = st.speed * 3.6, gal = st.tank_l / 3.785, unf = boomUnfolded();
+  g.fillStyle = "#f2f3f0"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#367c2b"; g.fillRect(0, 0, W, 30);
+  g.fillStyle = "#fff"; g.font = "bold 16px system-ui"; g.fillText("Spraying", 10, 21);
+  const d = new Date(); g.font = "13px system-ui";
+  g.fillText(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}   SF1`, 300, 20);
+  g.fillStyle = "#ffde00"; g.fillRect(440, 7, 28, 16); g.fillStyle = "#fff"; g.fillRect(476, 7, 28, 16);
+  // target rates column
+  const card = (x, y, w, h, title) => { g.fillStyle = "#fff"; g.fillRect(x, y, w, h); g.strokeStyle = "#c9ccc4"; g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    g.fillStyle = "#367c2b"; g.fillRect(x, y, w, 15); g.fillStyle = "#fff"; g.font = "bold 10px system-ui"; g.fillText(title, x + 5, y + 11); };
+  card(6, 36, 110, 112, "Target Rates");
+  g.fillStyle = "#222"; g.font = "15px system-ui";
+  [["psi", "40.0"], ["gal/ac ¹", "15.0"], ["gal/ac ²", "19.9"], ["gal/ac ³", "25.0"]].forEach(([u, v], i) => {
+    g.fillText(v, 12, 70 + i * 22); g.font = "10px system-ui"; g.fillStyle = "#666"; g.fillText(u, 62, 70 + i * 22); g.font = "15px system-ui"; g.fillStyle = "#222"; });
+  card(6, 154, 110, 70, "BoomTrac");
+  g.fillStyle = st.boomtrac ? "#2e9e44" : "#e07b00"; g.beginPath(); g.arc(18, 186, 5, 0, 7); g.fill();
+  g.fillStyle = "#222"; g.font = "13px system-ui"; g.fillText(st.boomtrac ? "Active" : "Not Ready", 28, 190);
+  g.fillText(`${(J.boom_height * 39.37).toFixed(0)} in`, 28, 210);
+  // tank + boom graphic
+  card(122, 36, 268, 188, "Machine");
+  const tx = 230, ty = 58, tw = 52, th = 70, fill = Math.max(0, Math.min(1, st.tank_l / SPECS.solution_tank_l));
+  g.strokeStyle = "#555"; g.lineWidth = 2; g.beginPath(); g.roundRect(tx, ty, tw, th, 18); g.stroke();
+  g.save(); g.beginPath(); g.roundRect(tx, ty, tw, th, 18); g.clip(); g.fillStyle = "#7fb3e0"; g.fillRect(tx, ty + th * (1 - fill), tw, th * fill); g.restore();
+  g.fillStyle = "#222"; g.font = "bold 13px system-ui"; g.fillText(`${gal.toFixed(0)}`, tx + 8, ty + 40); g.font = "10px system-ui"; g.fillText("gal", tx + 18, ty + 54);
+  g.lineWidth = 1;
+  // boom: 11 sections, green when spraying, grey when off, hatched when folded
+  for (let i = 0; i < 11; i++) {
+    const x = 132 + i * 23;
+    g.fillStyle = !unf ? "#bbb" : st.spray_on ? "#2e9e44" : "#d9dcd5"; g.fillRect(x, 150, 21, 12);
+    g.strokeStyle = "#777"; g.strokeRect(x + 0.5, 150.5, 20, 11);
+  }
+  g.fillStyle = "#222"; g.font = "13px system-ui";
+  g.fillText(`${(st.spray_on && unf ? st.rate_lpha / 9.354 : 0).toFixed(1)} gal/ac`, 132, 186);
+  g.fillText(`${(st.spray_on && unf ? Math.abs(st.speed) * SPECS.boom_length_m * st.rate_lpha / 10000 * 60 / 3.785 : 0).toFixed(1)} gal/min`, 250, 186);
+  g.fillText(`${(st.area_ha * 2.471).toFixed(2)} ac`, 132, 210);
+  g.fillText(`${(engineRpm()).toFixed(0)} rpm`, 250, 210);
+  // speed + mode column
+  card(396, 36, 110, 188, st.road_mode ? "Road" : "Field");
+  g.fillStyle = "#222"; g.font = "bold 34px system-ui"; g.fillText((kph / 1.609).toFixed(1), 404, 92);
+  g.font = "11px system-ui"; g.fillText("mph", 404, 106);
+  g.font = "13px system-ui";
+  g.fillText(`Range ${st.range}`, 404, 132); g.fillText(st.park ? "PARK" : "Drive", 404, 152);
+  g.fillText(`Tread ${(J.tread / 0.0254).toFixed(0)} in`, 404, 172);
+  g.fillText(boomFolded() ? "Boom: transport" : unf ? "Boom: field" : "Boom: moving", 404, 192);
+  // dock bar
+  g.fillStyle = "#e4e6e1"; g.fillRect(0, 272, W, 68);
+  [["AUTO", "WORK", st.spray_on], ["SECTION", "CTL", true], ["AUTO", "TRAC", false], ["GUID-", "ANCE", false], ["HMS", "", false], ["?", "HELP", false], ["▦", "MENU", false]].forEach(([a, b2, on], i) => {
+    const x = 6 + i * 72; g.fillStyle = "#fff"; g.fillRect(x, 278, 66, 56); g.fillStyle = on ? "#2e9e44" : "#888"; g.fillRect(x, 326, 66, 8);
+    g.fillStyle = "#333"; g.font = "bold 12px system-ui"; g.fillText(a, x + 8, 300); g.font = "10px system-ui"; g.fillText(b2, x + 8, 314); });
+  if (warnT > 0) { g.fillStyle = "#b3261e"; g.fillRect(0, 230, W, 38); g.fillStyle = "#fff"; g.font = "bold 13px system-ui"; g.fillText("⚠ " + warnMsg.slice(0, 64), 10, 254); }
+  g.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 // ------------------------------------------------------------------------------------ public API (RAG hook)
 window.sprayer = {
-  spec: SPEC, fps: () => fps,
+  spec: SPEC, fps: () => fps, _display: () => dspCanvas,
   runProcedure, highlight, camera: goCamera,
   setJoint: (id, v) => { T[id] = v; },
   press: (cid, ms = 1500) => { pressControl(cid, true); if (CONTROLS[cid]?.kind === "momentary") setTimeout(() => pressControl(cid, false), ms); },
-  getState: () => ({ joints: { ...J }, ...st, boomFolded: boomFolded(), boomUnfolded: boomUnfolded() }),
+  getState: () => ({ joints: { ...J }, ...st, boomFolded: boomFolded(), boomUnfolded: boomUnfolded(), rpm: engineRpm() }),
 };
 addEventListener("message", (e) => {
   const m = e.data; if (!m || m.type !== "612r") return;
@@ -564,6 +704,8 @@ renderer.setAnimationLoop(() => {
   if (procRunning && settled()) procRunning = false;
   if (proc && autoPlay && !procRunning) { autoWait += dt; if (autoWait > 1.8) { autoWait = 0; if (procStep < proc.steps.length - 1) showStep(procStep + 1); else autoPlay = false; } }
   applyJoints();
+  updateSpray(dt);
+  updateAudio();
   // follow the machine with the camera when it drives
   const before = new THREE.Vector3(st.x, 0, st.z);
   if (st._last) { const d = before.clone().sub(st._last); camera.position.add(d); orbit.target.add(d); }

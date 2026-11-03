@@ -72,5 +72,14 @@ IDs are stable. Rename them only together with the spec and the Blender script.
 
 - 2026-11-02: CommandARM v4, traced from Aryan's close-up photos of a real 612R CommandARM (top-down console, display key strip, hydro handle from several angles). Positions come from the top-down photo via `P()` in `build_612r.py`, and legends are printed on the keys. Controls carry an `evidence` field saying what their key legend shows. The legends identify tread narrow/wide, ladder, park, engine-speed rocker (orange n/min plate), spray key, AUTO boom height, wing tilt 2x2 and the E range rocker. Fold, outer-fold and Field/Road keys are placeholders (outer fold and Field/Road sit on display-strip keys). Everything stays verified:false until checked against the OM.
 
+- 2026-11-03: realism pass.
+  - CommandARM keys are photo-textured from `blender/ref/` (Aryan's photos).
+  - Working hydraulic cylinders: the `ACT_*` barrel/rod pairs. The viewer re-aims them from root extras `actuators`.
+  - BoomTrac sensors, engine-bay detail and decals.
+  - Poly Haven HDRI sky (`viewer/env/`), instanced corn rows, and render-only dirt.
+  - Spray fans from the 96 nozzle positions (root extras `nozzles`), tank drain and area counter.
+  - Synthesised engine/hydraulic sound with alarm beeps, and a CommandCenter "Spraying" run page.
+  - Software-GL tests run at about 5 fps, so use `?timescale=`.
+
 ### Probe results
 _(fill in)_

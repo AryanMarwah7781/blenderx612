@@ -30,6 +30,17 @@ The layout follows dealer photos of production 612R machines:
 |---|---|---|
 | ![](docs/viewport_solid_hero.png) | ![](docs/viewport_wire_transport.png) | ![](docs/viewport_xray_service.png) |
 
+## Realism features
+- **CommandARM:** key legends textured from photos of a real 612R CommandARM.
+- **Hydraulics:** working cylinders on the boom lift, fold and tilt, the ladder and the hood.
+- **Boom detail:** BoomTrac sensors and decals.
+- **Environment:** an outdoor HDRI sky (Poly Haven, CC0) and instanced corn on 30 in rows.
+- **Spraying:**
+  - Spray fans appear under all 96 nozzles when master spray is on.
+  - The tank drains at 15 gal/ac (140 L/ha) × speed × boom width.
+  - The CommandCenter screen shows a live "Spraying" page.
+- **Sound:** an engine note that follows rpm, hydraulic whine, and alarm beeps on interlocks. Toggle it with the Sound button.
+
 ## What is in the repo
 
 | Path | What it is |
