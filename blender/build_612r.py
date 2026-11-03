@@ -304,6 +304,19 @@ class Builder:
         bpy.data.objects.remove(ob); bpy.data.curves.remove(cu); bpy.data.meshes.remove(me)
         return self
 
+    def photo_uv(self, nrm, mapper, m):
+        """Give every face facing `nrm` (world/cab frame) material `m` and UVs from mapper(point) -> (u, v)."""
+        uv = self.bm.loops.layers.uv.verify()
+        self.bm.normal_update()
+        mi = self._mi(m)
+        off = Vector() if self.local else self.origin
+        for f in self.bm.faces:
+            if f.normal.dot(nrm) > 0.95:
+                f.material_index = mi
+                for l in f.loops:
+                    l[uv].uv = mapper(l.vert.co + off)
+        return self
+
     def done(self, bevel=0.0, smooth=False, props=None):
         me = bpy.data.meshes.new(self.name)
         bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
@@ -821,10 +834,48 @@ def legend(b, pos, text, size, m=None, rot=None, lift=0.0):
     R = rot or Matrix.Identity(3)
     b.text(text, size, m or M["glyph"], Matrix.Translation(Vector(pos) + R @ Vector((0, 0, lift))) @ (R @ TXT_BASIS).to_4x4())
 
-def key(name, ref, label, pos, m, size=(0.018, 0.018, 0.008), parent=None, rot=None, shape="box", text=None, tcol=None, tsize=None):
-    """A clickable key/roller with an optional printed legend. ref=None -> decorative."""
+# ---- photo textures: key faces show the real printed legends, cropped from Aryan's photos (blender/ref/)
+def photo_mat(name, fname):
+    m = bpy.data.materials.new(name)
+    try:
+        m.use_nodes = True
+    except Exception:
+        pass
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    img = bpy.data.images.load(os.path.join(HERE, "ref", fname), check_existing=True)
+    img.pack()
+    tex.image = img
+    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.5
+    m.diffuse_color = (0.08, 0.08, 0.08, 1)
+    return m
+PH_CON = photo_mat("Photo_Console", "console_top.jpg")
+PH_HH = photo_mat("Photo_HydroHandle", "hydro_handle_top.jpg")
+PH_STRIP = photo_mat("Photo_DisplayStrip", "display_strip.jpg")
+
+def console_uv(w):                     # exact inverse of P(): cab-frame point -> console photo UV
+    px = 785 - (w.y - CA_Y) / PX_S
+    py = 890 - (w.x - CON_X) / PX_S
+    return (px / 1500, 1 - py / 2000)
+
+def centre_uv(pos, R, cx, cy, S, W, H, ang=0.0):
+    """UVs for one key face: the key's own frame (x = up the legend, y = left) -> photo pixels around (cx, cy)."""
+    Rt, ca, sa = R.transposed(), math.cos(math.radians(ang)), math.sin(math.radians(ang))
+    def f(w):
+        d = Rt @ (w - pos)
+        rx, ry = -d.y * S, -d.x * S                      # photo right / down
+        return ((cx + rx * ca - ry * sa) / W, 1 - (cy + rx * sa + ry * ca) / H)
+    return f
+
+def key(name, ref, label, pos, m, size=(0.018, 0.018, 0.008), parent=None, rot=None, shape="box", text=None, tcol=None, tsize=None, photo=None):
+    """A clickable key/roller. Legend comes from `photo` = (material, uv-mapper or None) when given, else
+    from `text`. ref=None -> decorative."""
     R = rot or Matrix.Identity(3)
     pos = Vector(pos)
+    if photo is not None:
+        text = None
     def fn(b):
         if shape == "round":
             b.cyl(pos, size[0] / 2, size[2], m, segs=28, rot=R)
@@ -838,7 +889,9 @@ def key(name, ref, label, pos, m, size=(0.018, 0.018, 0.008), parent=None, rot=N
             b.box(pos, size, m, rot=R)
         if text:
             legend(b, pos, text, tsize or min(size[0], size[1]) * 0.45, tcol, rot=R, lift=size[2] / 2 + 0.0006)
-    o = part(name, parent or cab, fn, bevel=0.0018 if shape == "box" else 0.0)
+        if photo is not None and shape in ("box", "round"):
+            b.photo_uv(R @ Vector((0, 0, 1)), photo[1], photo[0])
+    o = part(name, parent or cab, fn, bevel=0.0018 if shape == "box" and photo is None else 0.0)
     if ref:
         tag(o, "control", ref, label)
     return o
@@ -858,16 +911,18 @@ def commandarm(b):
     b.box((5.27, CA_Y + GATE_V, CA_Z + 0.072), (0.19, 0.022, 0.006), M["black"])               # slot (fore/aft)
     b.box((5.185, CA_Y + GATE_V - 0.016, CA_Z + 0.072), (0.030, 0.030, 0.006), M["black"])     # J notch
     b.box((5.08, CA_Y + GATE_V + 0.03, CA_Z + 0.03), (0.09, 0.004, 0.05), M["int_pad"])        # shift-pattern decal
-    # keypad beds (black membrane panels), measured off the photo
-    b.box(P(277, 1225, -0.002), SZ(290, 660, 0.006), M["int_dark"])                           # inboard column
-    b.box(P(763, 1090, -0.002), SZ(690, 350, 0.006), M["int_dark"])                           # radio / climate block
-    b.box(P(1230, 760, -0.002), SZ(260, 900, 0.006), M["int_dark"])                           # outboard column
     b.box(P(725, 425, -0.005), SZ(590, 270, 0.012), M["black"])                               # front storage pocket
-    b.box(P(780, 785, -0.001), SZ(540, 125, 0.003), M["int_pad"])                             # boom thumbwheel decal
     # display post
     b.tube((5.44, CA_Y + 0.0, CA_Z + 0.04), (5.535, CA_Y + 0.015, CA_Z + 0.30), 0.018, M["int_dark"])
 part("commandarm_body", cab, commandarm, bevel=0.005)
-part("commandarm_decal", cab, lambda b: [legend(b, P(px, 785, 0.0012), t, 0.010, M["int_dark"]) for px, t in ((630, "± ‿‿⌒"), (900, "⌒‿‿ ±"))])
+def panels(b):   # keypad beds + the boom thumbwheel decal, photo-mapped (membrane gaps, printed decal)
+    b.box(P(277, 1225, -0.002), SZ(290, 660, 0.006), M["int_dark"])                           # inboard column
+    b.box(P(763, 1090, -0.002), SZ(690, 350, 0.006), M["int_dark"])                           # radio / climate block
+    b.box(P(1230, 760, -0.002), SZ(260, 900, 0.006), M["int_dark"])                           # outboard column
+    b.box(P(780, 785, -0.001), SZ(540, 125, 0.003), M["int_pad"])                             # boom thumbwheel decal
+    b.box(P(310, 790, -0.001), SZ(360, 200, 0.003), M["btn_o"])                               # orange engine-speed plate
+    b.photo_uv(Vector((0, 0, 1)), console_uv, PH_CON)
+part("commandarm_panels", cab, panels)
 
 # dash ledge to the right of the operator: cup holder, power sockets
 def ledge(b):
@@ -907,10 +962,16 @@ strip_keys = {   # (col, row) -> (mesh, control id, label, legend)
     (4, 1): ("strip_k41", None, "", "☀"), (5, 1): ("strip_k51", None, "", "≋"), (6, 1): ("strip_k61", None, "", "⇧"),
     (7, 1): ("BTN_transport", "ca_transport", "Field / Road mode", "⇆"),
 }
+STRIP_PX = {(0, 0): (620, 435), (1, 0): (745, 455), (2, 0): (870, 480), (0, 1): (610, 540), (1, 1): (730, 560), (2, 1): (855, 600),
+            (4, 0): (1045, 525), (5, 0): (1180, 550), (6, 0): (1315, 580), (7, 0): (1480, 600),
+            (4, 1): (1025, 630), (5, 1): (1160, 655), (6, 1): (1295, 690), (7, 1): (1440, 710)}   # key centres in display_strip.jpg
 for (c, r), (nm, ref, lab, txt) in strip_keys.items():
-    key(nm, ref, lab, strip_pt(c + (0.6 if c >= 4 else 0), r), M["btn_k"], size=(0.020, 0.024, 0.008), rot=STRIP_ROT, text=txt or None, tsize=0.011)
-key("strip_knob_X", None, "", DSP_C + DSP_ROT @ Vector((-0.02, 0.135, -DSP_H / 2 - 0.040)), M["int_dark"], size=(0.040, 0.040, 0.030),
-    rot=STRIP_ROT, shape="round", text="X", tsize=0.012)
+    kp = strip_pt(c + (0.6 if c >= 4 else 0), r)
+    key(nm, ref, lab, kp, M["btn_k"], size=(0.020, 0.024, 0.008), rot=STRIP_ROT,
+        photo=(PH_STRIP, centre_uv(kp, STRIP_ROT, *STRIP_PX[(c, r)], 4500, 2000, 1500, ang=10)))
+_kn = DSP_C + DSP_ROT @ Vector((-0.02, 0.135, -DSP_H / 2 - 0.040))
+key("strip_knob_X", None, "", _kn, M["int_dark"], size=(0.040, 0.040, 0.030), rot=STRIP_ROT, shape="round",
+    photo=(PH_STRIP, centre_uv(_kn + STRIP_ROT @ Vector((0, 0, 0.015)), STRIP_ROT, 440, 455, 4700, 2000, 1500)))
 
 # ---- console keys, measured off the top-down photo: (mesh, control id, label, px, py, wpx, hpx, colour, legend, legend colour)
 K, O = "btn_k", "btn_o"
@@ -949,12 +1010,12 @@ console_keys = [
 ]
 for nm, ref, lab, px, py, w, h, col, txt, tcol in console_keys:
     key(nm, ref, lab, P(px, py, 0.004), M[col], size=SZ(w * 0.9, h * 0.9), text=txt,
-        tcol=M["tail"] if tcol == "red" else None, tsize=min(w, h) * PX_S * 0.42)
+        tcol=M["tail"] if tcol == "red" else None, tsize=min(w, h) * PX_S * 0.42, photo=(PH_CON, console_uv))
 # boom-wing keys with fold arcs (outboard column): front half = OUT, rear half = IN (assignment unverified)
 for side, px, txt in (("L", 1150, "⌒‿‿"), ("R", 1270, "‿‿⌒")):
     nm = "Left" if side == "L" else "Right"
-    key(f"SW_fold_{side}_out", f"ca_fold_{side}_out", f"{nm} main fold OUT", P(px, 585, 0.004), M[K], size=SZ(110, 44), text=txt, tsize=0.006)
-    key(f"SW_fold_{side}_in",  f"ca_fold_{side}_in",  f"{nm} main fold IN",  P(px, 632, 0.004), M[K], size=SZ(110, 44))
+    key(f"SW_fold_{side}_out", f"ca_fold_{side}_out", f"{nm} main fold OUT", P(px, 585, 0.004), M[K], size=SZ(110, 44), photo=(PH_CON, console_uv))
+    key(f"SW_fold_{side}_in",  f"ca_fold_{side}_in",  f"{nm} main fold IN",  P(px, 632, 0.004), M[K], size=SZ(110, 44), photo=(PH_CON, console_uv))
 # thumbwheels behind the pocket (decal: boom wing ±) and the outboard thumbwheel
 for i, px in enumerate((610, 850)):
     key(f"ca_thumbwheel_{i}", None, "", P(px, 635, 0.008), M["int_dark"], size=(110 * PX_S, 70 * PX_S, 0.0), shape="roller")
@@ -1006,21 +1067,33 @@ hh_keys = [
     ("BTN_boom_raise",   "hh_boom_raise",   "Boom height raise (centre)",  -0.029, -0.024, (0.011, 0.020), "btn_k", "↑"),
     ("BTN_boom_lower",   "hh_boom_lower",   "Boom height lower (centre)",  -0.041, -0.024, (0.011, 0.020), "btn_k", "↓"),
 ]
+HH_PX = {   # key centres in hydro_handle_top.jpg (1500x2000 frame); the head face is rotated about -22 deg in the photo
+    "BTN_tilt_L_up": (635, 620), "BTN_tilt_R_up": (745, 575), "BTN_tilt_L_down": (660, 695), "BTN_tilt_R_down": (770, 660),
+    "BTN_master_spray": (940, 645), "BTN_resume": (730, 825), "BTN_boom_raise": (835, 765), "BTN_boom_lower": (840, 820),
+    "BTN_range_up": (492, 700), "BTN_range_down": (522, 790)}
+HH_S, HH_ANG = 4600, -22
+def hh_photo(nm, kp):
+    return (PH_HH, centre_uv(kp, HEAD_ROT, *HH_PX[nm], HH_S, 1500, 2000, ang=HH_ANG))
 for nm, ref, lab, u, v, (su, sv), col, txt in hh_keys:
-    key(nm, ref, lab, H(u, v, HK / 2), M[col], size=(su, sv, HK), parent=hh_piv, rot=HEAD_ROT, text=txt,
-        tcol=M["black"] if col == "btn_y" else None, tsize=0.0055 if len(txt) > 2 else 0.009)
+    kp = H(u, v, HK / 2)
+    key(nm, ref, lab, kp, M[col], size=(su, sv, HK), parent=hh_piv, rot=HEAD_ROT, photo=hh_photo(nm, kp))
 # E rocker (round, seat side rear): top half = range up, bottom half = range down
-key("BTN_range_up",   "hh_range_up",   "Speed range up (E rocker)",   H(-0.020, 0.032, HK / 2), M["btn_k"], size=(0.016, 0.032, HK), parent=hh_piv, rot=HEAD_ROT, text="E▲", tsize=0.006)
-key("BTN_range_down", "hh_range_down", "Speed range down (E rocker)", H(-0.038, 0.032, HK / 2), M["btn_k"], size=(0.016, 0.032, HK), parent=hh_piv, rot=HEAD_ROT, text="▼", tsize=0.007)
-def hh_decor(b):
-    b.box(H(0.062, 0.034, 0.010), (0.024, 0.024, 0.020), M["btn_y"], rot=HEAD_ROT)                     # yellow cube (front, seat side)
-    legend(b, H(0.062, 0.034, 0.0205), "△", 0.012, M["black"], rot=HEAD_ROT)
-    for u, v, su, sv, t in ((0.045, 0.030, 0.020, 0.018, "✱"), (0.045, 0.004, 0.022, 0.030, "←✱→"), (0.035, -0.034, 0.040, 0.022, "HMS F")):
-        b.box(H(u, v, HK / 2), (su, sv, HK), M["btn_k"], rot=HEAD_ROT)
-        legend(b, H(u, v, HK + 0.0006), t, 0.0055, rot=HEAD_ROT)
-    for i, t in enumerate("ABCD"):                                                                   # side keypad
+for nm, ref, lab, u in (("BTN_range_up", "hh_range_up", "Speed range up (E rocker)", -0.020),
+                        ("BTN_range_down", "hh_range_down", "Speed range down (E rocker)", -0.038)):
+    kp = H(u, 0.032, HK / 2)
+    key(nm, ref, lab, kp, M["btn_k"], size=(0.016, 0.032, HK), parent=hh_piv, rot=HEAD_ROT, photo=hh_photo(nm, kp))
+# decorative hydro-handle keys (functions not modelled): yellow cube, nozzle keys, HMS/F, A-B-C-D, all photo-mapped
+for nm, u, v, su, sv, h, col, cx, cy in (("hh_key_cube", 0.062, 0.034, 0.024, 0.024, 0.020, "btn_y", 580, 215),
+                                         ("hh_key_nozzle", 0.045, 0.030, 0.020, 0.018, HK, "btn_k", 470, 535),
+                                         ("hh_key_nozzles_lr", 0.045, 0.004, 0.022, 0.030, HK, "btn_k", 615, 430),
+                                         ("hh_key_hms_f", 0.035, -0.034, 0.040, 0.022, HK, "btn_k", 850, 445)):
+    kp = H(u, v, h / 2)
+    key(nm, None, "", kp, M[col], size=(su, sv, h), parent=hh_piv, rot=HEAD_ROT,
+        photo=(PH_HH, centre_uv(kp, HEAD_ROT, cx, cy, HH_S, 1500, 2000, ang=HH_ANG)))
+def hh_side(b):
+    for i in range(4):                                                                               # A-B-C-D side keypad
         b.box(H(-0.052 - (i // 2) * 0.013, -0.044, -0.010 - (i % 2) * 0.012), (0.011, 0.004, 0.010), M["btn_k"], rot=HEAD_ROT)
-part("hydro_handle_keys", hh_piv, hh_decor, bevel=0.0012)
+part("hydro_handle_side_keys", hh_piv, hh_side, bevel=0.0012)
 
 # shift the whole cab (shell, interior, controls) into its real position over the front axle
 cab.location.x += CAB_DX
